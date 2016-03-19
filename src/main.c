@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "read_config.h"
 #include "handle/handle.h"
 
-int main() {
+int main(int argc, char * argv[]) {
     wsx_config_t config = {0};
     int error_code = 0;
     if(-1 == init_config(&config)) { /* Read the configuration */
@@ -20,6 +19,7 @@ int main() {
         perror("Usage listen Queue: ");
         return -1;
     }
-    
+    handle_loop(listenfd, sock_type, &config);
+
     return 0;
 }

@@ -13,6 +13,24 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
+
+/* For wsx_config_t */
+#include "../read_config.h"
+/* For memory allocation */
+#include "../memop/manage.h"
+#define MAX_LISTEN_EPFD_SIZE 1
+#define OPEN_FILE 100000
+
+struct connection {
+    int epfd_grop;
+    int file_dsp;
+    int read_offset;
+    char * read_buf;
+    int write_offset;
+    char * write_buf;
+};
+typedef struct connection conn_client;
 
 enum { ERR_PARA_EMPTY = -1,
     ERR_GETADDRINFO = -2,
@@ -25,7 +43,7 @@ enum { ERR_PARA_EMPTY = -1,
  * port MUST NOT BE NULL !!!
  * sock_type is the pointer to a memory ,which com from the Outside(The Caller)
  * */
-int open_listenfd(const char * host_addr,const char * port, int* sock_type);
+int open_listenfd(const char * restrict host_addr,const char * restrict port, int * restrict sock_type);
 
 /*
  * Let the file description to be Nonblock
@@ -37,5 +55,8 @@ int set_nonblock(int file_dsption);
  */
 void optimizes(int file_dsption);
 
-
+/* Called in main function
+ * Main Structure, create Workers' thread and listen's thread
+ * */
+void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config);
 #endif //HTTPD3_HANDLE_H
