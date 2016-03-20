@@ -7,10 +7,14 @@
       <sourceFolder url="file://$MODULE_DIR$/main.c" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/memop/manage.c" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/memop/manage.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/read_config.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/handle/handle.c" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/handle/handle.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/handle/err_deal.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/handle/handle.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/handle/handle_read.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/handle/hancle_read.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/handle/handle_core.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/handle/handle_write.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/read_config.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/config" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/output" />
     </content>

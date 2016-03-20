@@ -109,17 +109,26 @@ static void * workers_thread(void * arg) {
             int sock = new_apply.data.fd;
             conn_client * new_client = &clients[sock];
             if (new_apply.events & EPOLLIN) { /* Reading Work */
-
+                /* TODO Handle read
+                 * READ_STATUS  handle_read(conn_client *)
+                 * PARSE_STATUS parse_read(conn_client *)
+                 * */
                 mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
             }
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
-
-                mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                /* TODO Handle write
+                 * WRITE_STATUS handle_write(conn_cliente *)
+                 * */
+                if(1 == new_client->linger)
+                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                else{
+                    close(sock);
+                    memset(new_client, 0, sizeof(conn_client));
+                }
             }
             else { /* EPOLLRDHUG EPOLLERR EPOLLHUG */
                 close(sock);
                 memset(new_client, 0, sizeof(conn_client));
-                continue;
             }
         } /* New Apply */
     } /* main while */

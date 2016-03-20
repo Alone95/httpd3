@@ -15,26 +15,19 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 
+#include "handle_core.h"
 /* For wsx_config_t */
 #include "../read_config.h"
 /* For memory allocation */
 #include "../memop/manage.h"
 #define MAX_LISTEN_EPFD_SIZE 1
-#define OPEN_FILE 100000
+#define OPEN_FILE 50000
 
-struct connection {
-    int epfd_grop;
-    int file_dsp;
-    int read_offset;
-    char * read_buf;
-    int write_offset;
-    char * write_buf;
-};
-typedef struct connection conn_client;
-
-enum { ERR_PARA_EMPTY = -1,
+enum open_listener{
+    ERR_PARA_EMPTY = -1,
     ERR_GETADDRINFO = -2,
-    ERR_BINDIND = -3};
+    ERR_BINDIND = -3
+};
 
 /*
  * Open The Listen Socket With the specific host(IP address) and port
