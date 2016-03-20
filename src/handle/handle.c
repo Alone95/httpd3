@@ -8,6 +8,8 @@
 
 #if defined(WSX_DEBUG)
     #include <assert.h>
+#include <signal.h>
+
 #endif
 enum SERVE_STATUS {
     CLOSE_SERVE = 1,
@@ -58,11 +60,11 @@ static inline void prepare_workers(void) {
     }
 #endif
     for (int i = 0; i < epfd_group_size; ++i) {
-        epfd_group[i] = epoll_create1(0);
+        epfd_group[i] = epoll_create(5);
 #if defined(WSX_DEBUG)
         if (-1 == epfd_group[i])
-            perror("epoll_create1 : ");
-        assert(-1 == epfd_group[i]);
+            fprintf(stderr, "Error on epoll\n");
+        //assert(-1 == epfd_group[i]);
 #endif
     }
     clients = Malloc(OPEN_FILE * sizeof(conn_client));
@@ -76,7 +78,7 @@ static inline void prepare_workers(void) {
 /* Listener's Thread
  * */
 static void * listen_thread(void * arg) {
-    int listen_epfd = *((int*)arg);
+    int listen_epfd = (int)arg;
     struct epoll_event new_client;
     /* Adding new Client Sock to the Workers' thread */
     int balance_index = 0;
@@ -86,6 +88,7 @@ static void * listen_thread(void * arg) {
         while (is_work > 0) { /* New Connect */
             sock = accept(new_client.data.fd, NULL, NULL);
             if (sock > 0) {
+                fprintf(stderr, "There has a client(%d) Connected\n", sock);
                 set_nonblock(sock);
                 clients[sock].file_dsp = sock;
                 clients[sock].epfd_grop = epfd_group[balance_index];
@@ -96,18 +99,20 @@ static void * listen_thread(void * arg) {
         } /* new Connect */
     }/* main while */
     close(listen_epfd);
-    return NULL;
+
+    pthread_exit(0);
 }
 /* Workers' Thread
  * */
 static void * workers_thread(void * arg) {
-    int deal_epfd = *((int *)arg);
+    int deal_epfd = (int)arg;
     struct epoll_event new_apply = {0};
     while(terminal_server != CLOSE_SERVE) {
         int is_apply = epoll_wait(deal_epfd, &new_apply, 1, 2000);
         if(is_apply > 0) { /* New Apply */
             int sock = new_apply.data.fd;
             conn_client * new_client = &clients[sock];
+            fprintf(stderr, "The thread %d receive the client(%d)\n", pthread_self(), sock);
             if (new_apply.events & EPOLLIN) { /* Reading Work */
                 /* TODO Handle read
                  * READ_STATUS  handle_read(conn_client *)
@@ -132,11 +137,15 @@ static void * workers_thread(void * arg) {
             }
         } /* New Apply */
     } /* main while */
-    return NULL;
+    pthread_exit(1);
 }
-
+static void shutdowns(int arg) {
+    terminal_server = CLOSE_SERVE;
+    return;
+}
 /* The Http server Main "Loop" */
 void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config) {
+    signal(SIGINT, shutdowns);
     workers = config->core_num - listeners;
 
     int listen_epfd = epoll_create1(0);
@@ -144,11 +153,27 @@ void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config) {
         perror("epoll_creat1: ");
         exit(-1);
     }
-    add_event(listen_epfd, file_dsption, EPOLLIN | EPOLLHUP | EPOLLERR);
-
+    { /* Register listen fd to the listen_epfd */
+        struct epoll_event event;
+        event.data.fd = file_dsption;
+        event.events = EPOLLET | EPOLLERR | EPOLLIN;
+        epoll_ctl(listen_epfd, EPOLL_CTL_ADD, file_dsption, &event);
+    }
     /* Prepare Workers Sources */
     prepare_workers();
-
+    pthread_t listener_set[listeners];
+    pthread_t worker_set[workers];
+    for (int i = 0; i < listeners; ++i) {
+        pthread_create(&listener_set[i], NULL, listen_thread, (void*)listen_epfd);
+        //pthread_detach(listener_set[i]);
+    }
+    for (int j = 0; j < workers; ++j) {
+        pthread_create(&worker_set[j], NULL, workers_thread, (void*)(epfd_group[j]));
+        pthread_detach(worker_set[j]);
+    }
+    for (int k = 0; k < listeners; ++k) {
+        pthread_join(listener_set[k], NULL);
+    }
 }
 
 int set_nonblock(int file_dsption){

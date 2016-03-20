@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "handle/handle.h"
 
 int main(int argc, char * argv[]) {
@@ -19,6 +20,7 @@ int main(int argc, char * argv[]) {
         perror("Usage listen Queue: ");
         return -1;
     }
+    signal(SIGPIPE, SIG_IGN);
     handle_loop(listenfd, sock_type, &config);
 
     return 0;
