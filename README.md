@@ -1,8 +1,8 @@
 ## 这是一个HTTP服务器
 
-### Version-0.3
+### Version-0.5
 
-> 2016-03-20
+> 2016-03-21
 > 
 > 正在重写中，最初版本的代码过乱，不宜维护
 
@@ -10,7 +10,7 @@
 - C语言开发
 - `epoll` + 线程池
 - `Linux` 环境， 非跨平台
-- `gcc -std=gnu99 -pthread -DWSX_DEBUG_ALL`
+- `gcc -std=gnu99 -pthread -DWSX_DEBUG`
 - 使用`CMake-3.3`。 可以直接修改版本号搭配自己平台的使用，当前`apt`上的版本为`2.8`
 - 英文注释
 ### 模块
