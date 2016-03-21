@@ -114,6 +114,9 @@ static void * workers_thread(void * arg) {
             conn_client * new_client = &clients[sock];
             fprintf(stderr, "The thread %d receive the client(%d)\n", pthread_self(), sock);
             if (new_apply.events & EPOLLIN) { /* Reading Work */
+                int err_code = handle_read(new_client);
+                if (err_code != HANDLE_READ_SUCCESS)
+                    fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
                 /* TODO Handle read
                  * READ_STATUS  handle_read(conn_client *)
                  * PARSE_STATUS parse_read(conn_client *)
