@@ -117,6 +117,7 @@ static void * workers_thread(void * arg) {
                 int err_code = handle_read(new_client);
                 if (err_code != HANDLE_READ_SUCCESS)
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
+                fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->write_buf);
                 /* TODO Handle read
                  * READ_STATUS  handle_read(conn_client *)
                  * PARSE_STATUS parse_read(conn_client *)

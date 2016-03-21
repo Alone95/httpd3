@@ -4,6 +4,8 @@
 #include <string.h>
 #include <assert.h>
 #include "handle_read.h"
+#include "http_response.h"
+
 #define READ_LINE 2048
 static int read_n(conn_client * client);
 
@@ -61,10 +63,16 @@ static int read_n(conn_client * client) {
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line);
 static DEAL_LINE_STATUS deal_requ(conn_client * client);
 static DEAL_LINE_STATUS deal_head(conn_client * client);
+/*
+ * Now we believe that the GET has no request-content(Request Line && Request Head)
+ * The POST Will be considered later
+ * parse_reading will parse the request line and Request Head,
+ * and Prepare the Page which will set into the Write buffer
+ * */
 PARSE_STATUS parse_reading(conn_client * client) {
     int err_code = 0;
     client->read_offset = 0; /* Set the offset to 0, the end of buf is '\0' */
-    /* Request line */
+    /*  Request line */
     err_code = deal_requ(client);
     if (DEAL_LINE_REQU_FAIL == err_code)
         return PARSE_BAD_REQUT;
@@ -77,13 +85,19 @@ PARSE_STATUS parse_reading(conn_client * client) {
         return PARSE_BAD_SYNTAX;
     return PARSE_SUCCESS;
 }
+
 #define METHOD_SIZE 128
 #define PATH_SIZE METHOD_SIZE*2
 #define VERSION_SIZE METHOD_SIZE
+/*
+ * deal_requ
+ * */
 static DEAL_LINE_STATUS deal_requ(conn_client * client) {
     char requ_line[READ_LINE] = {'\0'};
     int err_code = get_line(client, requ_line, READ_LINE);
+#if defined(WSX_DEBUG)
     assert(err_code > 0);
+#endif
     if (err_code < 0)
         return DEAL_LINE_REQU_FAIL;
 #if defined(WSX_DEBUG)
@@ -96,16 +110,8 @@ static DEAL_LINE_STATUS deal_requ(conn_client * client) {
     sscanf(requ_line, "%s %s %s", method, path, version);
     fprintf(stderr, "The Request method : %s, path : %s, version : %s\n", method, path, version);
     /* Test the Method. Did it implemented by Server */
-    /* GET */
-    if (strncasecmp(method, "GET", 3)!= 0) {
-        fprintf(stderr, "Method %s Not implement\n", method);
+    if (MAKE_PAGE_FAIL == make_response_page(client, version, path, method))
         return DEAL_LINE_REQU_FAIL;
-    }
-    else {
-#if defined(WSX_DEBUG)
-        fprintf(stderr, "Receive A GET method apply\n");
-#endif
-    }
     return DEAL_LINE_REQU_SUCCESS;
 }
 static DEAL_LINE_STATUS deal_head(conn_client * client) {

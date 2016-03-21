@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-
+#include <string.h>
 struct connection {
     int  linger;
     int  epfd_grop;
