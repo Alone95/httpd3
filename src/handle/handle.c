@@ -6,10 +6,9 @@
 #include <linux/tcp.h>
 #include <pthread.h>
 
-#if defined(WSX_DEBUG)
-    #include <assert.h>
+#include <assert.h>
 #include <signal.h>
-
+#if defined(WSX_DEBUG)
 #endif
 enum SERVE_STATUS {
     CLOSE_SERVE = 1,
@@ -130,23 +129,29 @@ static void * workers_thread(void * arg) {
                 int err_code = handle_read(new_client);
                 if (err_code != HANDLE_READ_SUCCESS)
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
+                mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
                 fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->write_buf);
                 /* TODO Handle read
                  * READ_STATUS  handle_read(conn_client *)
                  * PARSE_STATUS parse_read(conn_client *)
                  * */
-                mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
             }
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
-                /* TODO Handle write
-                 * WRITE_STATUS handle_write(conn_cliente *)
-                 * */
                 int err_code = handle_write(new_client);
+                if (HANDLE_WRITE_AGAIN == err_code) /* TCP's Write buffer is Busy */
+                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
+                    close(sock);
+                    memset(new_client, 0, sizeof(conn_client));
+                    continue;
+                }
+                /* if Keep-alive */
                 if(1 == new_client->linger)
                     mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
                 else{
                     close(sock);
                     memset(new_client, 0, sizeof(conn_client));
+                    continue;
                 }
             }
             else { /* EPOLLRDHUG EPOLLERR EPOLLHUG */

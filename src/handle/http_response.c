@@ -38,9 +38,12 @@ typedef enum {
     FORBIDDEN_ENTRY = 2,
     IS_DIRECTORY = 3,
 }URI_STATUS;
+/*
+ * Let the URI to be the Valid Way.
+ * */
 static inline void deal_uri(char * uri) {
     fprintf(stderr, "\nThe resource is %s\n", uri);
-    if ('/' == uri[0] && uri[1] == '\0') {
+    if ('/' == uri[0] && uri[1] == '\0') { /*If Apply the root Resource  */
         snprintf(uri, strlen(uri)+1,"%sindex.html", website_root_path);
     }
     else {
@@ -51,6 +54,9 @@ static inline void deal_uri(char * uri) {
     }
     fprintf(stderr, "\nThe resource is %s\n", uri);
 }
+/*
+ * Check if the Resource which CLient apply is A REAL File Resource(Include the Authorization)
+ * */
 static URI_STATUS check_uri(const char * uri, int * file_size) {
     struct stat buf = {0};
     if (stat(uri, &buf) < 0) {
@@ -68,7 +74,12 @@ static URI_STATUS check_uri(const char * uri, int * file_size) {
     *file_size = buf.st_size;
     return IS_NORMAL_FILE;
 }
-static int write_to_buf(const conn_client * client,
+/*
+ * Put the Respone Message to the conn_client's write_buf
+ * return 0 if Success, Or the remaining Bytes that can not pull into the write buffer(Not Big Enough)
+ *
+ * */
+static int write_to_buf(conn_client * client,
                          const char ** status, const char * http_ver,
                          const char * source_path, int source_size) {
     char * write_buf = client->write_buf;
@@ -83,7 +94,7 @@ static int write_to_buf(const conn_client * client,
     }
     int fd = open(source_path, O_RDONLY);
     if (fd < 0) {
-        assert(fd > 0);
+        //assert(fd > 0);
     }
     char * file_map = mmap(NULL, source_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (NULL == file_map) {
@@ -91,6 +102,7 @@ static int write_to_buf(const conn_client * client,
     }
     close(fd);
     int content_w = snprintf(write_buf+w_count, BUF_SIZE-w_count, file_map);
+    client->write_offset = content_w + w_count;
     munmap(file_map, source_size);
     if (content_w < source_size) {
         fprintf(stderr, "File has not send completely, Still has %d bytes\n", source_size - content_w);
@@ -102,6 +114,9 @@ static int write_to_buf(const conn_client * client,
     }
     return 0;
 }
+/*
+ * Universal Response Page maker
+ * */
 MAKE_PAGE_STATUS make_response_page(const conn_client * client,
                                     const char * http_ver, const char * uri, const char * method)
 {
@@ -112,21 +127,29 @@ MAKE_PAGE_STATUS make_response_page(const conn_client * client,
     strncpy(source, uri, len_source);
     if (uri != NULL && source != NULL)
         deal_uri(source);
-    else
-        assert(0);
+    else{
+        Free(source);
+        write_to_buf(client, sererr_500_status, http_ver, NULL, 0);
+        return MAKE_PAGE_FAIL;
+    }
     if(0 == strncasecmp(method, "GET", 3)) {
         err_code = check_uri(source, &uri_file_size);
-        if (err_code != IS_NORMAL_FILE) {
-            write_to_buf(client, clierr_404_status, http_ver, NULL, uri_file_size);
-        }
-        else
+        if (IS_NORMAL_FILE == err_code)
             write_to_buf(client, ok_200_status, http_ver, source, uri_file_size);
+        else if (FORBIDDEN_ENTRY == err_code){
+            write_to_buf(client, clierr_403_status, http_ver, NULL, 0);
+        }
+        else /*if (NO_SUCH_FILE == err_code || IS_DIRECTORY == err_code)*/ {
+            write_to_buf(client, clierr_404_status, http_ver, NULL, 0);
+        }
+
     }
     else if ( 0 == strncasecmp(method, "POST", 4)) {
-        /* TODO */
+        /* TODO POST Method */
+        write_to_buf(client, clierr_405_status, http_ver, NULL, 0);
     }
-    else {
-
+    else { /* Unknown Method */
+        write_to_buf(client, clierr_400_status, http_ver, NULL, 0);
     }
     Free(source);
     return MAKE_PAGE_SUCCESS;

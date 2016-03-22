@@ -36,4 +36,5 @@ typedef enum {
 /* Parse the Reading thing, and Make deal with them
  * */
 PARSE_STATUS parse_reading(conn_client * client);
+
 #endif //HTTPD3_HANDLE_READ_H

@@ -59,9 +59,20 @@ static int read_n(conn_client * client) {
 
 /******************************************************************************************/
 /* Deal with the read buf data which has been read from socket */
+#define METHOD_SIZE 128
+#define PATH_SIZE METHOD_SIZE*2
+#define VERSION_SIZE METHOD_SIZE
+typedef struct requ_line{
+    char path[PATH_SIZE];
+    char method[METHOD_SIZE];
+    char version[VERSION_SIZE];
+}requ_line;
+/* TODO Deal the head Attribute , like Keep-alive, Cache ... */
+typedef struct requ_head_attr{
 
+}requ_attr;
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line);
-static DEAL_LINE_STATUS deal_requ(conn_client * client);
+static DEAL_LINE_STATUS deal_requ(conn_client * client,  const requ_line * status);
 static DEAL_LINE_STATUS deal_head(conn_client * client);
 /*
  * Now we believe that the GET has no request-content(Request Line && Request Head)
@@ -71,9 +82,10 @@ static DEAL_LINE_STATUS deal_head(conn_client * client);
  * */
 PARSE_STATUS parse_reading(conn_client * client) {
     int err_code = 0;
+    requ_line * line_status = Malloc(sizeof(requ_line));
     client->read_offset = 0; /* Set the offset to 0, the end of buf is '\0' */
     /*  Request line */
-    err_code = deal_requ(client);
+    err_code = deal_requ(client, line_status);
     if (DEAL_LINE_REQU_FAIL == err_code)
         return PARSE_BAD_REQUT;
     /* Request Head Attribute until /r/n */
@@ -83,16 +95,15 @@ PARSE_STATUS parse_reading(conn_client * client) {
     err_code = deal_head(client);
     if (DEAL_HEAD_FAIL == err_code)
         return PARSE_BAD_SYNTAX;
+    err_code = make_response_page(client, line_status->version, line_status->path, line_status->method);
+    if (MAKE_PAGE_FAIL == err_code)
+        return PARSE_BAD_REQUT;
     return PARSE_SUCCESS;
 }
-
-#define METHOD_SIZE 128
-#define PATH_SIZE METHOD_SIZE*2
-#define VERSION_SIZE METHOD_SIZE
 /*
  * deal_requ
  * */
-static DEAL_LINE_STATUS deal_requ(conn_client * client) {
+static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status) {
     char requ_line[READ_LINE] = {'\0'};
     int err_code = get_line(client, requ_line, READ_LINE);
 #if defined(WSX_DEBUG)
@@ -104,14 +115,11 @@ static DEAL_LINE_STATUS deal_requ(conn_client * client) {
     fprintf(stderr, "Requset line is : %s \n", requ_line);
 #endif
     /* For example GET / HTTP/1.0 */
-    char method[METHOD_SIZE]   = {'\0'};
-    char path[PATH_SIZE]       = {'\0'};
-    char version[VERSION_SIZE] = {'\0'};
-    sscanf(requ_line, "%s %s %s", method, path, version);
-    fprintf(stderr, "The Request method : %s, path : %s, version : %s\n", method, path, version);
-    /* Test the Method. Did it implemented by Server */
-    if (MAKE_PAGE_FAIL == make_response_page(client, version, path, method))
+    err_code = sscanf(requ_line, "%s %s %s", status->method, status->path, status->version);
+    if (err_code != 3)
         return DEAL_LINE_REQU_FAIL;
+    fprintf(stderr, "The Request method : %s, path : %s, version : %s\n",
+                                    status->method, status->path, status->version);
     return DEAL_LINE_REQU_SUCCESS;
 }
 static DEAL_LINE_STATUS deal_head(conn_client * client) {

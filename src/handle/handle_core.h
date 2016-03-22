@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include "../memop/manage.h"
+
 struct connection {
     int  linger;
     int  epfd_grop;
@@ -25,6 +27,7 @@ typedef enum {
     HANDLE_READ_SUCCESS = -(1 << 1),
     HANDLE_READ_FAILURE = -(1 << 2),
     HANDLE_WRITE_SUCCESS = -(1 << 3),
+    HANDLE_WRITE_AGAIN   = -(1 << 5),
     HANDLE_WRITE_FAILURE = -(1 << 4),
 }HANDLE_STATUS;
 
