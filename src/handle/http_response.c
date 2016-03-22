@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "http_response.h"
 #include "../memop/manage.h"
-
+extern website_root_path;
 static const char * const
         ok_200_status[] = { "200",
                             "OK", ""};
@@ -41,11 +41,11 @@ typedef enum {
 static inline void deal_uri(char * uri) {
     fprintf(stderr, "\nThe resource is %s\n", uri);
     if ('/' == uri[0] && uri[1] == '\0') {
-        strncpy(uri, "./index.html", 12);
+        snprintf(uri, strlen(uri)+1,"%sindex.html", website_root_path);
     }
     else {
         char tmp[1024] = {0};
-        snprintf(tmp, 1024, "./%s", uri+1);
+        snprintf(tmp, 1024, "%s%s", website_root_path, uri+1);
         fprintf(stderr, "tmp : %s \n", tmp);
         strncpy(uri, tmp, strlen(tmp));
     }
@@ -54,7 +54,8 @@ static inline void deal_uri(char * uri) {
 static URI_STATUS check_uri(const char * uri, int * file_size) {
     struct stat buf = {0};
     if (stat(uri, &buf) < 0) {
-        fprintf(stderr, "No such file\n");
+        fprintf(stderr, "Get File %s ", uri);
+        perror("Message: ");
         return NO_SUCH_FILE; /* No such file */
     }
     if ( 0 == (buf.st_mode & S_IROTH) ) {
@@ -94,6 +95,10 @@ static int write_to_buf(const conn_client * client,
     if (content_w < source_size) {
         fprintf(stderr, "File has not send completely, Still has %d bytes\n", source_size - content_w);
         return source_size - content_w;
+        /* TODO
+         * Add a Extra Buffer to Store the Part of Data(Using heap allocation)
+         * Set the bit(Check bit) in the pointer which points to the Buffer
+         * */
     }
     return 0;
 }
@@ -110,10 +115,12 @@ MAKE_PAGE_STATUS make_response_page(const conn_client * client,
     else
         assert(0);
     if(0 == strncasecmp(method, "GET", 3)) {
-        err_code = check_uri(uri, &uri_file_size);
+        err_code = check_uri(source, &uri_file_size);
         if (err_code != IS_NORMAL_FILE) {
             write_to_buf(client, clierr_404_status, http_ver, NULL, uri_file_size);
         }
+        else
+            write_to_buf(client, ok_200_status, http_ver, source, uri_file_size);
     }
     else if ( 0 == strncasecmp(method, "POST", 4)) {
         /* TODO */

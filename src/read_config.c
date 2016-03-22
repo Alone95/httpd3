@@ -3,17 +3,20 @@
 //
 #include "read_config.h"
 #include <string.h>
-#include <strings.h>
 #include <stdlib.h>
 
+static const char * config_path_search[] = {CONFIG_FILE_PATH, "./wsx.conf", "/etc/wushxin/wsx.conf", NULL};
+
 int init_config(wsx_config_t * config){
-    FILE * file = fopen(CONFIG_FILE_PATH, "r");
+    const char ** roll = config_path_search;
+    FILE * file;
+    for (int i = 0; roll[i] != NULL; ++i) {
+        file = fopen(roll[i], "r");
+        if (file != NULL)
+            break;
+    }
     char buf[PATH_LENGTH] = {"\0"};
     char * ret;
-    if(NULL == file) {
-        perror("Open File " CONFIG_FILE_PATH " : ");
-        return -1; /* Can not read the Config file */
-    }
     ret = fgets(buf, PATH_LENGTH, file);
     while (ret != NULL) {
 #if defined(WSX_DEBUG_ALL)
@@ -34,6 +37,10 @@ int init_config(wsx_config_t * config){
             }
             else if (0 == strncasecmp(buf, "root", 4)) {
                 sscanf(pos, "%s", &config->root_path);
+                /* End up without "/", Add it */
+                if ((config->root_path)[strlen(config->root_path)-1] != '/') {
+                    strncat(config->root_path, "/", 1);
+                }
 #if defined(WSX_DEBUG)
                 fprintf(stderr, "root path is %s\n", config->root_path);
 #endif

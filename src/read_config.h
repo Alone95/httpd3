@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #define CONFIG_FILE_PATH "../../config/wsx.conf"
+
 #define IPV6_LENGTH_CHAR 128/8
 
 struct init_config_from_file {

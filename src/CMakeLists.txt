@@ -7,6 +7,6 @@ set(SOURCE_FILES config/wsx.conf
         read_config.h read_config.c main.c
         handle/handle.h memop/manage.h handle/handle_read.h handle/handle_write.h handle/http_response.h handle/handle_core.h
         handle/handle.c memop/manage.c handle/hancle_read.c                       handle/http_response.c
-    )
+        handle/handle_write.c)
 
 add_executable(httpd3 ${SOURCE_DIR} ${SOURCE_FILES} )

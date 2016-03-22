@@ -16,7 +16,7 @@ enum SERVE_STATUS {
     RUNNING_SERVER= 0
 };
 static enum SERVE_STATUS terminal_server = RUNNING_SERVER;
-
+char * website_root_path = NULL;
 static int* epfd_group = NULL;  /* Workers' epfd set */
 static int epfd_group_size = 0; /* Workers' epfd set size */
 static int workers = 0;         /* NUmber of Workers */
@@ -50,13 +50,13 @@ static inline void mod_event(int epfd, int fd, int event_flag) {
  * Prepare Some Resources For Workers
  * Worker epfd set and client set
  * */
-static inline void prepare_workers(void) {
+static void prepare_workers(wsx_config_t * config) {
     epfd_group_size = workers;
     epfd_group = Malloc(epfd_group_size * (sizeof(int)));
 #if defined(WSX_DEBUG)
     if (NULL == epfd_group) {
         fputs( "Malloc Fail!", stderr);
-        assert(NULL == epfd_group);
+        assert(NULL != epfd_group);
     }
 #endif
     for (int i = 0; i < epfd_group_size; ++i) {
@@ -71,9 +71,22 @@ static inline void prepare_workers(void) {
 #if defined(WSX_DEBUG)
     if (NULL == clients) {
         fputs( "Malloc Fail!", stderr);
-        assert(NULL == clients);
+        assert(NULL != clients);
     }
 #endif
+    website_root_path = Malloc(strlen(config->root_path)+1);
+    if (NULL == website_root_path) {
+        fputs( "Malloc Fail!", stderr);
+        assert(NULL != website_root_path);
+    }
+    else {
+        strncpy(website_root_path, config->root_path, strlen(config->root_path));
+    }
+}
+static inline void destroy_resouce() {
+    Free(epfd_group);
+    Free(clients);
+    Free(website_root_path);
 }
 /* Listener's Thread
  * */
@@ -128,6 +141,7 @@ static void * workers_thread(void * arg) {
                 /* TODO Handle write
                  * WRITE_STATUS handle_write(conn_cliente *)
                  * */
+                int err_code = handle_write(new_client);
                 if(1 == new_client->linger)
                     mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
                 else{
@@ -164,7 +178,7 @@ void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config) {
         epoll_ctl(listen_epfd, EPOLL_CTL_ADD, file_dsption, &event);
     }
     /* Prepare Workers Sources */
-    prepare_workers();
+    prepare_workers(config);
     pthread_t listener_set[listeners];
     pthread_t worker_set[workers];
     for (int i = 0; i < listeners; ++i) {
@@ -178,6 +192,7 @@ void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config) {
     for (int k = 0; k < listeners; ++k) {
         pthread_join(listener_set[k], NULL);
     }
+    destroy_resouce();
 }
 
 int set_nonblock(int file_dsption){
