@@ -42,9 +42,12 @@ typedef enum {
  * Let the URI to be the Valid Way.
  * */
 static inline void deal_uri(char * uri) {
+#if defined(WSX_DEBUG)
     fprintf(stderr, "\nThe resource is %s\n", uri);
+    fprintf(stderr, "Website_root_path: %s\n", website_root_path);
+#endif
     if ('/' == uri[0] && uri[1] == '\0') { /*If Apply the root Resource  */
-        snprintf(uri, strlen(uri)+1,"%sindex.html", website_root_path);
+        snprintf(uri, strlen(website_root_path)+strlen("index.html")+1,"%sindex.html", website_root_path);
     }
     else {
         char tmp[1024] = {0};
@@ -52,7 +55,9 @@ static inline void deal_uri(char * uri) {
         fprintf(stderr, "tmp : %s \n", tmp);
         strncpy(uri, tmp, strlen(tmp));
     }
+#if defined(WSX_DEBUG)
     fprintf(stderr, "\nThe resource is %s\n", uri);
+#endif
 }
 /*
  * Check if the Resource which CLient apply is A REAL File Resource(Include the Authorization)
@@ -94,7 +99,7 @@ static int write_to_buf(conn_client * client,
     }
     int fd = open(source_path, O_RDONLY);
     if (fd < 0) {
-        //assert(fd > 0);
+        return -1; /* Write again */
     }
     char * file_map = mmap(NULL, source_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (NULL == file_map) {
@@ -129,14 +134,16 @@ MAKE_PAGE_STATUS make_response_page(const conn_client * client,
         deal_uri(source);
     else{
         Free(source);
+SERVER_ERROR:
         write_to_buf(client, sererr_500_status, http_ver, NULL, 0);
         return MAKE_PAGE_FAIL;
     }
     if(0 == strncasecmp(method, "GET", 3)) {
         err_code = check_uri(source, &uri_file_size);
-        if (IS_NORMAL_FILE == err_code)
-            write_to_buf(client, ok_200_status, http_ver, source, uri_file_size);
-        else if (FORBIDDEN_ENTRY == err_code){
+        if (IS_NORMAL_FILE == err_code) {
+            if((err_code = write_to_buf(client, ok_200_status, http_ver, source, uri_file_size)) < 0)
+                goto SERVER_ERROR;
+        }else if (FORBIDDEN_ENTRY == err_code){
             write_to_buf(client, clierr_403_status, http_ver, NULL, 0);
         }
         else /*if (NO_SUCH_FILE == err_code || IS_DIRECTORY == err_code)*/ {

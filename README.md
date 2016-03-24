@@ -1,6 +1,6 @@
 ## 这是一个HTTP服务器
 
-### Version-1.0
+### Version-1.0.1
 
 > 2016-03-22
 > 
@@ -10,7 +10,7 @@
 
 - 高性能高并发
 - C语言开发
-- `epoll` + 线程池
+- `epoll` + 类线程池技术
 - `Linux` 环境， 非跨平台
 - `gcc -std=gnu99 -pthread -DWSX_DEBUG`
 - 使用`CMake-3.3`。 可以直接修改版本号搭配自己平台的使用，当前`apt`上的版本为`2.8`
@@ -34,6 +34,7 @@
 ### 进度
 - 完成总体程序框架的编写
 - 基本功能完成
+- 高并发时在 **response**中的`snprintf`似乎会有 Segment Fault 的错误
 
 ### TODO
 - `timer`模块

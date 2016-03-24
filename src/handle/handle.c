@@ -242,6 +242,7 @@ int open_listenfd(const char * restrict host_addr, const char * restrict port, i
 
         if(-1 == listenfd)
             continue; /* Try the Next Possibility */
+        optimizes(listenfd);
         if(-1 == bind(listenfd, p->ai_addr, p->ai_addrlen)){
             close(listenfd);
             continue; /* Same Reason */
@@ -259,7 +260,6 @@ int open_listenfd(const char * restrict host_addr, const char * restrict port, i
     *sock_type = p->ai_family;
     freeaddrinfo(result);
     set_nonblock(listenfd);
-    optimizes(listenfd);
     return listenfd;
 }
 
