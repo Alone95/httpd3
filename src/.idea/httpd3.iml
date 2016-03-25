@@ -17,7 +17,6 @@
       <sourceFolder url="file://$MODULE_DIR$/handle/handle_write.c" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/handle/http_response.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/read_config.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/config" isTestSource="false" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module-library">

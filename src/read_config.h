@@ -5,9 +5,7 @@
 #ifndef HTTPD3_READ_CONFIG_H
 #define HTTPD3_READ_CONFIG_H
 
-#include <stdio.h>
 #define CONFIG_FILE_PATH "../../config/wsx.conf"
-
 #define IPV6_LENGTH_CHAR 128/8
 
 struct init_config_from_file {
@@ -21,6 +19,10 @@ struct init_config_from_file {
 };
 typedef struct init_config_from_file wsx_config_t;
 
+/*
+ * Read the config file "wsx.conf" in particular path
+ * and Put the data to the config object
+ * */
 int init_config(wsx_config_t * config);
 
 #endif //HTTPD3_READ_CONFIG_H

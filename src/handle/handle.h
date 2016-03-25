@@ -6,21 +6,16 @@
 #define HTTPD3_HANDLE_H
 
 #include <netdb.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
+#include <signal.h>
 
 #include "handle_read.h"
 #include "handle_write.h"
 /* For wsx_config_t */
 #include "../read_config.h"
-/* For memory allocation */
-#include "../memop/manage.h"
 #define MAX_LISTEN_EPFD_SIZE 1
 #define OPEN_FILE 50000
 

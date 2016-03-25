@@ -7,9 +7,6 @@
 #include <pthread.h>
 
 #include <assert.h>
-#include <signal.h>
-#if defined(WSX_DEBUG)
-#endif
 enum SERVE_STATUS {
     CLOSE_SERVE = 1,
     RUNNING_SERVER= 0
@@ -18,7 +15,7 @@ static enum SERVE_STATUS terminal_server = RUNNING_SERVER;
 char * website_root_path = NULL;
 static int* epfd_group = NULL;  /* Workers' epfd set */
 static int epfd_group_size = 0; /* Workers' epfd set size */
-static int workers = 0;         /* NUmber of Workers */
+static int workers = 0;         /* Number of Workers */
 static int listeners = MAX_LISTEN_EPFD_SIZE; /* Number of Listenner */
 static conn_client * clients;   /* Client set */
 
@@ -49,7 +46,7 @@ static inline void mod_event(int epfd, int fd, int event_flag) {
  * Prepare Some Resources For Workers
  * Worker epfd set and client set
  * */
-static void prepare_workers(wsx_config_t * config) {
+static void prepare_workers(const wsx_config_t * config) {
     epfd_group_size = workers;
     epfd_group = Malloc(epfd_group_size * (sizeof(int)));
 #if defined(WSX_DEBUG)
@@ -160,7 +157,6 @@ static void * workers_thread(void * arg) {
             }
         } /* New Apply */
     } /* main while */
-    pthread_exit(1);
 }
 static void shutdowns(int arg) {
     terminal_server = CLOSE_SERVE;

@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "http_response.h"
 #include "../memop/manage.h"
-extern website_root_path;
+extern char * website_root_path;
 static const char * const
         ok_200_status[] = { "200",
                             "OK", ""};
@@ -122,7 +122,7 @@ static int write_to_buf(conn_client * client,
 /*
  * Universal Response Page maker
  * */
-MAKE_PAGE_STATUS make_response_page(const conn_client * client,
+MAKE_PAGE_STATUS make_response_page(conn_client * client,
                                     const char * http_ver, const char * uri, const char * method)
 {
     int err_code = 0;

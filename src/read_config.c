@@ -4,6 +4,7 @@
 #include "read_config.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static const char * config_path_search[] = {CONFIG_FILE_PATH, "./wsx.conf", "/etc/wushxin/wsx.conf", NULL};
 
@@ -14,6 +15,13 @@ int init_config(wsx_config_t * config){
         file = fopen(roll[i], "r");
         if (file != NULL)
             break;
+    }
+    if (NULL == file) {
+#if defined(WSX_DEBUG)
+        fprintf(stderr, "Check For the Config file, does it stay its life?\n"
+                "In Such Path: \n%s\n%s\n%s\n", config_path_search[0], config_path_search[1], config_path_search[2]);
+#endif
+        exit(-1);
     }
     char buf[PATH_LENGTH] = {"\0"};
     char * ret;
