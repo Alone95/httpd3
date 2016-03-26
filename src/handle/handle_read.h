@@ -28,13 +28,5 @@ typedef enum {
  * */
 HANDLE_STATUS handle_read(conn_client * client);
 
-typedef enum {
-    PARSE_SUCCESS    = 1 << 1, /* Parse the Reading Success, set the event to Write Event */
-    PARSE_BAD_SYNTAX = 1 << 2, /* Parse the Reading Fail, for the Wrong Syntax */
-    PARSE_BAD_REQUT  = 1 << 3, /* Parse the Reading Success, but Not Implement OR No Such Resources*/
-}PARSE_STATUS;
-/* Parse the Reading thing, and Make deal with them
- * */
-PARSE_STATUS parse_reading(conn_client * client);
 
 #endif //HTTPD3_HANDLE_READ_H

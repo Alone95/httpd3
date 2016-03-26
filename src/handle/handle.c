@@ -13,10 +13,11 @@ enum SERVE_STATUS {
 };
 static enum SERVE_STATUS terminal_server = RUNNING_SERVER;
 char * website_root_path = NULL;
-static int* epfd_group = NULL;  /* Workers' epfd set */
-static int epfd_group_size = 0; /* Workers' epfd set size */
-static int workers = 0;         /* Number of Workers */
-static int listeners = MAX_LISTEN_EPFD_SIZE; /* Number of Listenner */
+static int * epfd_group = NULL;  /* Workers' epfd set */
+static int   epfd_group_size = 0; /* Workers' epfd set size */
+static int   workers = 0;         /* Number of Workers */
+static int * epfd_listen_set = NULL; /* Linstenners' epfd set */
+static int   listeners = MAX_LISTEN_EPFD_SIZE; /* Number of Listenner */
 static conn_client * clients;   /* Client set */
 
 /* Add new Socket to the epfd
@@ -48,35 +49,39 @@ static inline void mod_event(int epfd, int fd, int event_flag) {
  * */
 static void prepare_workers(const wsx_config_t * config) {
     epfd_group_size = workers;
+    /* Prepare for workers' set */
     epfd_group = Malloc(epfd_group_size * (sizeof(int)));
-#if defined(WSX_DEBUG)
     if (NULL == epfd_group) {
-        fputs( "Malloc Fail!", stderr);
-        assert(NULL != epfd_group);
-    }
+#if defined(WSX_DEBUG)
+        fputs("Malloc Fail!", stderr);
 #endif
+        exit(-1);
+    }
     for (int i = 0; i < epfd_group_size; ++i) {
-        epfd_group[i] = epoll_create(5);
+        epfd_group[i] = epoll_create1(0);
+        if (-1 == epfd_group[i]) {
 #if defined(WSX_DEBUG)
-        if (-1 == epfd_group[i])
             fprintf(stderr, "Error on epoll\n");
-        //assert(-1 == epfd_group[i]);
 #endif
-    }
-    clients = Malloc(OPEN_FILE * sizeof(conn_client));
+            exit(-1);
+        }
+        clients = Malloc(OPEN_FILE * sizeof(conn_client));
+        if (NULL == clients) {
 #if defined(WSX_DEBUG)
-    if (NULL == clients) {
-        fputs( "Malloc Fail!", stderr);
-        assert(NULL != clients);
-    }
+            fputs("Malloc Fail!", stderr);
 #endif
-    website_root_path = Malloc(strlen(config->root_path)+1);
-    if (NULL == website_root_path) {
-        fputs( "Malloc Fail!", stderr);
-        assert(NULL != website_root_path);
-    }
-    else {
-        strncpy(website_root_path, config->root_path, strlen(config->root_path));
+            exit(-1);
+        }
+        website_root_path = Malloc(strlen(config->root_path) + 1);
+        if (NULL == website_root_path) {
+#if defined(WSX_DEBUG)
+            fputs("Malloc Fail!", stderr);
+#endif
+            exit(-1);
+        }
+        else {
+            strncpy(website_root_path, config->root_path, strlen(config->root_path));
+        }
     }
 }
 static inline void destroy_resouce() {
@@ -85,10 +90,11 @@ static inline void destroy_resouce() {
     Free(website_root_path);
 }
 /* Listener's Thread
+ * @param arg will be a epoll instance
  * */
 static void * listen_thread(void * arg) {
     int listen_epfd = (int)arg;
-    struct epoll_event new_client;
+    struct epoll_event new_client = {0};
     /* Adding new Client Sock to the Workers' thread */
     int balance_index = 0;
     while (terminal_server != CLOSE_SERVE) {
@@ -112,6 +118,7 @@ static void * listen_thread(void * arg) {
     pthread_exit(0);
 }
 /* Workers' Thread
+ * @param arg will be a epoll instance
  * */
 static void * workers_thread(void * arg) {
     int deal_epfd = (int)arg;
@@ -124,13 +131,20 @@ static void * workers_thread(void * arg) {
             fprintf(stderr, "The thread %d receive the client(%d)\n", pthread_self(), sock);
             if (new_apply.events & EPOLLIN) { /* Reading Work */
                 int err_code = handle_read(new_client);
-                if (err_code != HANDLE_READ_SUCCESS)
+                if (err_code != HANDLE_READ_SUCCESS) {
+#if defined(WSX_DEBUG)
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
+#endif
+                    close(sock);
+                    memset(new_client, 0, sizeof(conn_client));
+                    continue;
+                }
                 mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+#if defined(WSX_DEBUG)
                 fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->write_buf);
+#endif
                 /* TODO Handle read
                  * READ_STATUS  handle_read(conn_client *)
-                 * PARSE_STATUS parse_read(conn_client *)
                  * */
             }
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
@@ -245,16 +259,14 @@ int open_listenfd(const char * restrict host_addr, const char * restrict port, i
         }
         break; /* If we get here, it means that we have succeed to do all the Work */
     }
+    freeaddrinfo(result);
     if (NULL == p) {
-        /* TODO ERROR HANDLE */
         fprintf(stderr, "In %s, Line: %d\nError Occur while Open/Binding the listen fd\n",__FILE__, __LINE__);
         return ERR_BINDIND;
     }
-    
     fprintf(stderr, "DEBUG MESG: Now We(%d) are in : %s , listen the %s port Success\n", listenfd,
             inet_ntoa(((struct sockaddr_in *)p->ai_addr)->sin_addr), port);
     *sock_type = p->ai_family;
-    freeaddrinfo(result);
     set_nonblock(listenfd);
     return listenfd;
 }

@@ -32,12 +32,7 @@ static const char * const
 static const char * const
         sererr_503_status[] = {"503",
                                "Service Unavailable", "WuShxin Server is Overload Or go die : )"};
-typedef enum {
-    IS_NORMAL_FILE = 0,
-    NO_SUCH_FILE = 1,
-    FORBIDDEN_ENTRY = 2,
-    IS_DIRECTORY = 3,
-}URI_STATUS;
+
 /*
  * Let the URI to be the Valid Way.
  * */
@@ -59,6 +54,12 @@ static inline void deal_uri(char * uri) {
     fprintf(stderr, "\nThe resource is %s\n", uri);
 #endif
 }
+typedef enum {
+    IS_NORMAL_FILE = 0,
+    NO_SUCH_FILE = 1,
+    FORBIDDEN_ENTRY = 2,
+    IS_DIRECTORY = 3,
+}URI_STATUS;
 /*
  * Check if the Resource which CLient apply is A REAL File Resource(Include the Authorization)
  * */
@@ -84,7 +85,7 @@ static URI_STATUS check_uri(const char * uri, int * file_size) {
  * return 0 if Success, Or the remaining Bytes that can not pull into the write buffer(Not Big Enough)
  *
  * */
-static int write_to_buf(conn_client * client,
+static int write_to_buf(conn_client * client, // connection client message
                          const char ** status, const char * http_ver,
                          const char * source_path, int source_size) {
     char * write_buf = client->write_buf;

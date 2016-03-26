@@ -22,6 +22,8 @@ typedef struct init_config_from_file wsx_config_t;
 /*
  * Read the config file "wsx.conf" in particular path
  * and Put the data to the config object
+ * @param  config is aims to be a parameter set
+ * @return 0 means Success
  * */
 int init_config(wsx_config_t * config);
 

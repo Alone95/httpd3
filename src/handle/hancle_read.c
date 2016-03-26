@@ -7,6 +7,16 @@
 #include "http_response.h"
 
 #define READ_LINE 2048
+
+typedef enum {
+    PARSE_SUCCESS    = 1 << 1, /* Parse the Reading Success, set the event to Write Event */
+    PARSE_BAD_SYNTAX = 1 << 2, /* Parse the Reading Fail, for the Wrong Syntax */
+    PARSE_BAD_REQUT  = 1 << 3, /* Parse the Reading Success, but Not Implement OR No Such Resources*/
+}PARSE_STATUS;
+
+/* Parse the Reading thing, and Make deal with them
+ * */
+static PARSE_STATUS parse_reading(conn_client * client);
 static int read_n(conn_client * client);
 
 HANDLE_STATUS handle_read(conn_client * client) {
@@ -84,11 +94,11 @@ PARSE_STATUS parse_reading(conn_client * client) {
     int err_code = 0;
     requ_line * line_status = Malloc(sizeof(requ_line));
     client->read_offset = 0; /* Set the offset to 0, the end of buf is '\0' */
-    /*  Request line */
+    /* Get Request line */
     err_code = deal_requ(client, line_status);
     if (DEAL_LINE_REQU_FAIL == err_code)
         return PARSE_BAD_REQUT;
-    /* Request Head Attribute until /r/n */
+    /* Get Request Head Attribute until /r/n */
 #if defined(WSX_DEBUG)
     fprintf(stderr, "Starting Deal_head\n");
 #endif
@@ -101,7 +111,7 @@ PARSE_STATUS parse_reading(conn_client * client) {
     return PARSE_SUCCESS;
 }
 /*
- * deal_requ
+ * deal_requ, get the request line
  * */
 static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status) {
     char requ_line[READ_LINE] = {'\0'};
@@ -122,6 +132,9 @@ static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status
                                     status->method, status->path, status->version);
     return DEAL_LINE_REQU_SUCCESS;
 }
+/*
+ * get the request head
+ * */
 static DEAL_LINE_STATUS deal_head(conn_client * client) {
     int nbytes = 0;
     char head_line[READ_LINE] = {'\0'};

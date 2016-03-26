@@ -33,10 +33,8 @@ MM_STATUS wsx_free(void * pointer);
 #elif defined(WSX_MM_JEMALLOC) /* extension for jemalloc or tcmalloc */
     /* TODO JEMALLOC */
 #else
-
 #define Malloc wsx_malloc
 #define Calloc wsx_calloc
 #define Free   wsx_free
-
 
 #endif //HTTPD3_MANAGE_H
