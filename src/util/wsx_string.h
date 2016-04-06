@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#define APPEND(str) str,strlen(str)
+#define APPEND(str) str,(strlen(str)+1)
 typedef char boolen;
 typedef struct funtable funtable;
 
