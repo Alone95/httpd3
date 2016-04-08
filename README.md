@@ -1,14 +1,12 @@
 ## 这是一个HTTP服务器
 
-## Unstable
-
 ### Version-1.3.0
 
 - 高性能高并发
 - C语言开发
 - `epoll` + 类线程池技术
 - `Linux` 环境， 非跨平台
-- `gcc -std=gnu99 -pthread -DWSX_DEBUG`
+- `gcc -std=gnu99 -pthread -O3`
 - 使用`CMake-3.3`。 可以直接修改版本号搭配自己平台的使用，当前`apt`上的版本为`2.8`
 - 英文注释
 
@@ -37,10 +35,11 @@
 ### 进度
 - 完成总体程序框架的编写
 - 基本功能完成
-- 高并发时在 **response**中的`snprintf`似乎会有 Segment Fault 的错误
 - 使用新数据结构 `String` 解决发送文件过大问题。
 
 ### TODO
 - `timer`模块
 - `util`模块
+- 能处理更多的属性
+- 添加缓存支持
 - **http** 请求头 : `GET POST`
