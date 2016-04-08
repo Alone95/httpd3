@@ -4,9 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include "handle_read.h"
-#include "http_response.h"
 
-#define READ_LINE 2048
 
 typedef enum {
     PARSE_SUCCESS    = 1 << 1, /* Parse the Reading Success, set the event to Write Event */
@@ -28,39 +26,56 @@ HANDLE_STATUS handle_read(conn_client * client) {
         return HANDLE_READ_FAILURE;
     }
 #if defined(WSX_DEBUG)
-    fprintf(stderr, "\nRead From Client(%d): %s\n", client->file_dsp, client->read_buf);
-#endif
-    /* Parsing the Reading Data */
-#if defined(WSX_DEBUG)
+    fprintf(stderr, "\nRead From Client(%d): %s\n read %d Bytes\n", client->file_dsp, client->r_buf->str, client->r_buf_offset);
     fprintf(stderr, "\nStart Parsing Reading\n");
 #endif
+    /* Parsing the Reading Data */
     err_code = parse_reading(client);
-    if(err_code != PARSE_SUCCESS) {
+    if(err_code != PARSE_SUCCESS) { /* If Parse Fail then End this connect */
         return HANDLE_READ_FAILURE;
     }
     return HANDLE_READ_SUCCESS;
 }
 
+/*
+ * Read data from peer(TCP Read buffer)
+ * read_buf is aim to be a local buffer
+ * client->r_buf is the real Storage of the data
+ * */
 static int read_n(conn_client * client) {
-    if (client->read_offset >= BUF_SIZE-1)
+    /* -
+    if (client->read_offset >= CONN_BUF_SIZE-1)
         return READ_OVERFLOW;
+    */
     int    fd        = client->file_dsp;
     char * buf       = client->read_buf;
     int    buf_index = client->read_offset;
     int read_number = 0;
+    int less_capacity = 0;
     while (1) {
-        read_number = read(fd, buf+buf_index, BUF_SIZE-buf_index);
+        less_capacity = CONN_BUF_SIZE - buf_index;
+        if (less_capacity <= 1) {/* Overflow Protection */
+            buf[buf_index] = '\0'; /* Flush the buf to the r_buf String */
+            client->r_buf->use->append(client->r_buf, APPEND(buf));
+            client->r_buf_offset += client->read_offset;
+            client->read_offset = buf_index = 0;
+            buf = client->read_buf;
+            less_capacity = CONN_BUF_SIZE - buf_index;
+        }
+        read_number = read(fd, buf+buf_index, less_capacity);
         if (0 == read_number) { /* We must close connection */
             return READ_FAIL;
         }
         else if (-1 == read_number) { /* Nothing to read */
             if (EAGAIN == errno || EWOULDBLOCK == errno) {
                 buf[buf_index] = '\0';
+                client->r_buf->use->append(client->r_buf, APPEND(buf));
+                client->r_buf_offset += client->read_offset;
                 return READ_SUCCESS;
             }
             return READ_FAIL;
         }
-        else {
+        else { /* Continue to Read */
             buf_index += read_number;
             client->read_offset = buf_index;
         }
@@ -77,13 +92,10 @@ typedef struct requ_line{
     char method[METHOD_SIZE];
     char version[VERSION_SIZE];
 }requ_line;
-/* TODO Deal the head Attribute , like Keep-alive, Cache ... */
-typedef struct requ_head_attr{
-
-}requ_attr;
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line);
 static DEAL_LINE_STATUS deal_requ(conn_client * client,  const requ_line * status);
 static DEAL_LINE_STATUS deal_head(conn_client * client);
+
 /*
  * Now we believe that the GET has no request-content(Request Line && Request Head)
  * The POST Will be considered later
@@ -92,20 +104,25 @@ static DEAL_LINE_STATUS deal_head(conn_client * client);
  * */
 PARSE_STATUS parse_reading(conn_client * client) {
     int err_code = 0;
-    requ_line * line_status = Malloc(sizeof(requ_line));
-    client->read_offset = 0; /* Set the offset to 0, the end of buf is '\0' */
+    requ_line line_status = {0};
+    client->read_offset  = 0; /* Set the local buffer offset to 0, the end of buf is '\0' */
+    client->r_buf_offset = 0; /* Set the real Storage offset to 0, the end of buf is '\0' */
+
     /* Get Request line */
-    err_code = deal_requ(client, line_status);
+    err_code = deal_requ(client, &line_status); /* First Line in Request */
     if (DEAL_LINE_REQU_FAIL == err_code)
         return PARSE_BAD_REQUT;
-    /* Get Request Head Attribute until /r/n */
+
 #if defined(WSX_DEBUG)
     fprintf(stderr, "Starting Deal_head\n");
 #endif
-    err_code = deal_head(client);
+    /* Get Request Head Attribute until /r/n */
+    err_code = deal_head(client);               /* The second line to the Empty line */
     if (DEAL_HEAD_FAIL == err_code)
         return PARSE_BAD_SYNTAX;
-    err_code = make_response_page(client, line_status->version, line_status->path, line_status->method);
+    
+    /* Response Page maker */
+    err_code = make_response_page(client);  
     if (MAKE_PAGE_FAIL == err_code)
         return PARSE_BAD_REQUT;
     return PARSE_SUCCESS;
@@ -114,8 +131,9 @@ PARSE_STATUS parse_reading(conn_client * client) {
  * deal_requ, get the request line
  * */
 static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status) {
-    char requ_line[READ_LINE] = {'\0'};
-    int err_code = get_line(client, requ_line, READ_LINE);
+#define READ_HEAD_LINE 256
+    char requ_line[READ_HEAD_LINE] = {'\0'};
+    int err_code = get_line(client, requ_line, READ_HEAD_LINE);
 #if defined(WSX_DEBUG)
     assert(err_code > 0);
 #endif
@@ -128,20 +146,35 @@ static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status
     err_code = sscanf(requ_line, "%s %s %s", status->method, status->path, status->version);
     if (err_code != 3)
         return DEAL_LINE_REQU_FAIL;
+    (client->conn_res).requ_method->use->append((client->conn_res).requ_method, APPEND(status->method));
+    (client->conn_res).requ_http_ver->use->append((client->conn_res).requ_http_ver, APPEND(status->version));
+    (client->conn_res).requ_res_path->use->append((client->conn_res).requ_res_path, APPEND(status->path));
+#if defined(WSX_DEBUG)
     fprintf(stderr, "The Request method : %s, path : %s, version : %s\n",
                                     status->method, status->path, status->version);
+    fprintf(stderr, "[String] The Request method : \n");
+    client->conn_res.requ_res_path->use->print(client->conn_res.requ_res_path);
+    client->conn_res.requ_http_ver->use->print(client->conn_res.requ_http_ver);
+    client->conn_res.requ_method->use->print(client->conn_res.requ_method);
+#endif
     return DEAL_LINE_REQU_SUCCESS;
+#undef READ_HEAD_LINE
 }
 /*
  * get the request head
  * */
 static DEAL_LINE_STATUS deal_head(conn_client * client) {
+    /* TODO
+     * Complete the Function of head attribute
+     * */
+#define READ_ATTRIBUTE_LINE 256
     int nbytes = 0;
-    char head_line[READ_LINE] = {'\0'};
-    int index = 1;
-    while((nbytes = get_line(client, head_line, READ_LINE)) > 0) {
+    char head_line[READ_ATTRIBUTE_LINE] = {'\0'};
+    while((nbytes = get_line(client, head_line, READ_ATTRIBUTE_LINE)) > 0) {
         if(0 == strncmp(head_line, "\r\n", 2)) {
+#if defined(WSX_DEBUG)
             fprintf(stderr, "Read the empty Line\n");
+#endif
             break;
         }
 #if defined(WSX_DEBUG)
@@ -153,30 +186,28 @@ static DEAL_LINE_STATUS deal_head(conn_client * client) {
         fprintf(stderr, "Error Reading in deal_head\n");
         return DEAL_HEAD_FAIL;
     }
+#if defined(WSX_DEBUG)
     fprintf(stderr, "Deal head Success\n");
+#endif
     return DEAL_HEAD_SUCCESS;
+#undef READ_ATTRIBUTE_LINE
 }
+
+/* Get One Line(\n\t) From The Reading buffer
+ * */
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line) {
-    int read_idx = client->read_offset;
-    const char * read_ptr = client->read_buf;
-    while(read_ptr[read_idx] != '\n' && read_ptr[read_idx] != '\0')
-        ++read_idx;
-    char c = read_ptr[read_idx++]; /* ++ means that go into next start character */
     int nbytes = 0;
-    if ( '\0' == c ) { /* if get the '\0' */
+    char *r_buf_find = (client->r_buf->use->has(client->r_buf,"\n"));
+    if (NULL == r_buf_find){ 
         fprintf(stderr, "get_line has read a 0\n");
         return READ_BUF_FAIL;
-    }
-    else if ('\n' == c) {
-        nbytes = read_idx - client->read_offset;
-        if (max_line-1 >=  nbytes) {
-            memcpy(line_buf, read_ptr + client->read_offset, nbytes);
-            client->read_offset = read_idx;
-        }
-        else {
-            fprintf(stderr, "get_line has overflow\n");
+    } else{
+        nbytes = r_buf_find - (client->r_buf->str + client->r_buf_offset) + 1;
+        if (max_line-1 < nbytes)
             return READ_BUF_OVERFLOW;
-        }
+        memcpy(line_buf, client->r_buf->str+client->r_buf_offset, nbytes);
+        client->r_buf_offset = r_buf_find - client->r_buf->str + 1;
+        *r_buf_find = '\r'; /* Let the \n to be \r */
     }
     line_buf[nbytes] = '\0';
     return nbytes;

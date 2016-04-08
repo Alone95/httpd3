@@ -4,18 +4,22 @@
 #include "handle_write.h"
 
 HANDLE_STATUS handle_write(conn_client * client) {
-    int nbyte = client->write_offset;
+    /* String Version */
+    char*    w_buf    = client->w_buf->str;
+    int      w_offset = client->w_buf_offset;
+    int nbyte = w_offset;
     int count = 0;
     int fd = client->file_dsp;
     char * buf = client->write_buf;
-
     while (nbyte > 0) {
         buf += count;
-        count = write(fd, buf, 8192);
+        w_buf += count;
+        //count = write(fd, buf, 8192);
+        count = write(fd, w_buf, nbyte);
         if (count < 0) {
             if (EAGAIN == errno || EWOULDBLOCK == errno) {
-                memcpy(client->write_buf, buf, strlen(buf));
-                client->write_offset = nbyte;
+                memcpy(client->w_buf->str, w_buf, strlen(w_buf));
+                client->w_buf_offset = nbyte;
                 return HANDLE_WRITE_AGAIN;
             }
             if (EPIPE == errno)

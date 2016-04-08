@@ -8,18 +8,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <string.h>
+#include <assert.h>
 #include "../memop/manage.h"
-
+#include "../util/wsx_string.h"
+typedef char boolean;
 struct connection {
-    int  linger;
+    int  linger; /* Will Be Deleted soon */
     int  epfd_grop;
     int  file_dsp;
-#define BUF_SIZE 8192
+#define CONN_BUF_SIZE 1024
     int  read_offset;
-    char read_buf[BUF_SIZE];
+    char read_buf[CONN_BUF_SIZE];
     int  write_offset;
-    char write_buf[BUF_SIZE];
+    char write_buf[CONN_BUF_SIZE];
+    int r_buf_offset;
+    string_t r_buf;
+    int w_buf_offset;
+    string_t w_buf;
+#if 1
+    /*
+    * TODO Merge the Client Connection's Request Attribution into the connection struct
+    */
+    struct {
+        /* GET, POST */
+        string_t requ_method;
+        /* http/1.0\0 */
+        string_t requ_http_ver;
+        /* / */
+        string_t requ_res_path;
+        /* Is it Keep-alive in Application Layer */
+        int content_type;
+        boolean conn_linger;
+    }conn_res;
+#endif
 };
 typedef struct connection conn_client;
 

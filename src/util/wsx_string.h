@@ -4,10 +4,18 @@
 
 #ifndef HTTPD3_WSX_STRING_H_H
 #define HTTPD3_WSX_STRING_H_H
+/// README FIRST!
+/// While Using the string_t, we should use the string_t instead of String
+/// Because We should initialize it before using, so keep it away if it has
+/// not make by make_Strings
+/// It means that using the string_t carefully
+/// To be Safety,
+/// call the Interface make_Strings, and use the return value
+/// Destroy if it has nothing to live by using dele_Strings
+/// Both the two functions is manipulate the string_t or return it.
 
 #include <string.h>
-
-#define APPEND(str) str,strlen(str)
+#define APPEND(str) str,(strlen(str)+1)
 typedef char boolen;
 typedef struct funtable funtable;
 
@@ -17,7 +25,6 @@ typedef struct String {
     unsigned int cap; /*  */
     unsigned int len; /* String Length */
     boolen       empty;
-
 }String;
 
 typedef boolen       (*isempty_fun)(String *);

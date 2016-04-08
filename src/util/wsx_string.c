@@ -132,6 +132,10 @@ static char * Str_make_append(String * restrict self, const char * restrict app_
     }
     strncat(self->str, app_str, str_len);
     self->len += str_len;
+    if (self->str[self->len - 1] != '\0') {
+        self->str[self->len] = '\0';
+        self->len += 1;
+    }
 }
 
 static inline boolen expand_size(String * self) {

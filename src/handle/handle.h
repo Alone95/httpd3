@@ -30,7 +30,7 @@ enum open_listener{
  * That must be compatible with the IPv6 And IPv4
  * host_addr could be NULL
  * port MUST NOT BE NULL !!!
- * sock_type is the pointer to a memory ,which com from the Outside(The Caller)
+ * sock_type is the pointer to a memory ,which comes from the Outside(The Caller)
  * */
 int open_listenfd(const char * restrict host_addr,const char * restrict port, int * restrict sock_type);
 
@@ -46,6 +46,9 @@ void optimizes(int file_dsption);
 
 /* Called in main function
  * Main Structure, create Workers' thread and listen's thread
+ * @param file_dsption  means that linsten socket, which will be used in listen's thread
+ *        sock_type     IPv4 or IPv6
+ *        config        contains the configuration which wsx.conf says.
  * */
 void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config);
 #endif //HTTPD3_HANDLE_H

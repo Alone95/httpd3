@@ -3,6 +3,7 @@
 //
 
 #include "handle.h"
+#include "handle_core.h"
 #include <linux/tcp.h>
 #include <pthread.h>
 
@@ -65,13 +66,20 @@ static void prepare_workers(const wsx_config_t * config) {
 #endif
             exit(-1);
         }
+
         clients = Malloc(OPEN_FILE * sizeof(conn_client));
         if (NULL == clients) {
-#if defined(WSX_DEBUG)
-            fputs("Malloc Fail!", stderr);
-#endif
             exit(-1);
+        } else{
+            for (int j = 0; j < OPEN_FILE; ++j) {
+                clients[j].r_buf = make_Strings("");
+                clients[j].w_buf = make_Strings("");
+                clients[j].conn_res.requ_method = make_Strings("");
+                clients[j].conn_res.requ_res_path = make_Strings("");
+                clients[j].conn_res.requ_http_ver = make_Strings("");
+            }
         }
+
         website_root_path = Malloc(strlen(config->root_path) + 1);
         if (NULL == website_root_path) {
 #if defined(WSX_DEBUG)
@@ -84,11 +92,27 @@ static void prepare_workers(const wsx_config_t * config) {
         }
     }
 }
+
 static inline void destroy_resouce() {
     Free(epfd_group);
     Free(clients);
     Free(website_root_path);
 }
+static void clear_clients(conn_client * clear) {
+    clear->file_dsp = -1;
+    clear->epfd_grop = -1;
+    clear->linger = 0;
+    clear->read_offset = 0;
+    clear->write_offset = 0;
+    clear->r_buf_offset = 0;
+    clear->w_buf_offset = 0;
+    clear->r_buf->use->clear(clear->r_buf);
+    clear->w_buf->use->clear(clear->w_buf);
+    clear->conn_res.requ_http_ver->use->clear(clear->conn_res.requ_http_ver);
+    clear->conn_res.requ_method->use->clear(clear->conn_res.requ_method);
+    clear->conn_res.requ_res_path->use->clear(clear->conn_res.requ_res_path);
+}
+
 /* Listener's Thread
  * @param arg will be a epoll instance
  * */
@@ -117,6 +141,7 @@ static void * listen_thread(void * arg) {
 
     pthread_exit(0);
 }
+
 /* Workers' Thread
  * @param arg will be a epoll instance
  * */
@@ -136,16 +161,13 @@ static void * workers_thread(void * arg) {
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
 #endif
                     close(sock);
-                    memset(new_client, 0, sizeof(conn_client));
+                    clear_clients(new_client);
                     continue;
                 }
                 mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
 #if defined(WSX_DEBUG)
-                fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->write_buf);
+                fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->w_buf->str);
 #endif
-                /* TODO Handle read
-                 * READ_STATUS  handle_read(conn_client *)
-                 * */
             }
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
                 int err_code = handle_write(new_client);
@@ -153,7 +175,7 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
                 else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
                     close(sock);
-                    memset(new_client, 0, sizeof(conn_client));
+                    clear_clients(new_client);
                     continue;
                 }
                 /* if Keep-alive */
@@ -161,13 +183,13 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
                 else{
                     close(sock);
-                    memset(new_client, 0, sizeof(conn_client));
+                    clear_clients(new_client);
                     continue;
                 }
             }
             else { /* EPOLLRDHUG EPOLLERR EPOLLHUG */
                 close(sock);
-                memset(new_client, 0, sizeof(conn_client));
+                clear_clients(new_client);
             }
         } /* New Apply */
     } /* main while */

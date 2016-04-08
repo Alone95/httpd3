@@ -4,7 +4,7 @@
 
 #ifndef HTTPD3_HANDLE_READ_H
 #define HTTPD3_HANDLE_READ_H
-#include "handle_core.h"
+#include "http_response.h"
 
 typedef enum {
     DEAL_LINE_REQU_SUCCESS = 0,
@@ -24,7 +24,9 @@ typedef enum {
     READ_BUF_FAIL     = -(1 << 3), /* Read From conn_client buf fail */
     READ_BUF_OVERFLOW = -(1 << 4), /* Read from conn_client buf is more than the deal buf */
 }READ_STATUS;
+
 /* Read the request from the client
+ * Prepare data for the handle_write
  * */
 HANDLE_STATUS handle_read(conn_client * client);
 
