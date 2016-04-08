@@ -15,6 +15,10 @@
 /// Both the two functions is manipulate the string_t or return it.
 
 #include <string.h>
+<<<<<<< HEAD
+=======
+
+>>>>>>> db4fb4b3960fd950fa0390ad442d635688a96b54
 #define APPEND(str) str,(strlen(str)+1)
 typedef char boolen;
 typedef struct funtable funtable;
