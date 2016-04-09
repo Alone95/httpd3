@@ -101,9 +101,10 @@ static inline void destroy_resouce() {
 static void clear_clients(conn_client * clear) {
     clear->file_dsp = -1;
     clear->epfd_grop = -1;
-    clear->linger = 0;
+    //clear->linger = 0;
+    clear->conn_res.conn_linger = 0;
     clear->read_offset = 0;
-    clear->write_offset = 0;
+    //clear->write_offset = 0;
     clear->r_buf_offset = 0;
     clear->w_buf_offset = 0;
     clear->r_buf->use->clear(clear->r_buf);
@@ -127,7 +128,9 @@ static void * listen_thread(void * arg) {
         while (is_work > 0) { /* New Connect */
             sock = accept(new_client.data.fd, NULL, NULL);
             if (sock > 0) {
+#if defined(WSX_BASE_DEBUG)
                 fprintf(stderr, "There has a client(%d) Connected\n", sock);
+#endif
                 set_nonblock(sock);
                 clients[sock].file_dsp = sock;
                 clients[sock].epfd_grop = epfd_group[balance_index];
@@ -153,7 +156,9 @@ static void * workers_thread(void * arg) {
         if(is_apply > 0) { /* New Apply */
             int sock = new_apply.data.fd;
             conn_client * new_client = &clients[sock];
+#if defined(WSX_BASE_DEBUG)
             fprintf(stderr, "The thread %d receive the client(%d)\n", pthread_self(), sock);
+#endif
             if (new_apply.events & EPOLLIN) { /* Reading Work */
                 int err_code = handle_read(new_client);
                 if (err_code != HANDLE_READ_SUCCESS) {
@@ -179,7 +184,7 @@ static void * workers_thread(void * arg) {
                     continue;
                 }
                 /* if Keep-alive */
-                if(1 == new_client->linger)
+                if(1 == new_client->conn_res.conn_linger)
                     mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
                 else{
                     close(sock);
