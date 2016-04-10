@@ -2,6 +2,7 @@
 // Created by root on 3/21/16.
 //
 #include "http_response.h"
+#include "handle_core.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -67,7 +68,7 @@ static inline void deal_uri_string(string_t uri) {
         uri->use->append(uri, APPEND("index.html"));
     } else {
         char tmp[1024] = {0};
-        snprintf(tmp, 1024, "%s%s", website_root_path, uri->str);
+        snprintf(tmp, 1024, "%s%s", website_root_path, uri->str+1);
         uri->use->clear(uri);uri->use->append(uri, APPEND(tmp));
     }
 #if defined(WSX_DEBUG)
@@ -135,9 +136,11 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     write_buf[w_count] = '\0';
     w_buf->use->append(w_buf, APPEND(write_buf));
     client->w_buf_offset = w_count;
-    if (0 == rsource_size) {
+    if (0 == rsource_size) {  /* GET Method */
         w_buf->use->append(w_buf, APPEND(status[STATUS_CONTENT]));
         snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, status[2]);
+        return 0;
+    } else if (-1 == rsource_size) { /* HEAD Method */
         return 0;
     }
     int fd = open(resource->str, O_RDONLY);
@@ -190,26 +193,15 @@ MAKE_PAGE_STATUS make_response_page(conn_client * client)
     int err_code = 0;
     int uri_file_size = 0;
 
-    //-int len_source = strlen(uri);
-    //-char * source = Malloc(len_source > 1024 ? len_source : 1024);
-    //-strncpy(source, uri, len_source);
     string_t uri_str = client->conn_res.requ_res_path;
-    if (1 != uri_str->use->length(uri_str)) { /* Make it valid */
+    if (1 <= uri_str->use->length(uri_str)) { /* Make it valid */
         deal_uri_string(uri_str);
     } else {
         goto SERVER_ERROR;
     }
-    /*-
-    if (uri != NULL && source != NULL)
-        deal_uri(source);
-    else{
-        Free(source); goto SERVER_ERROR;
-    }
-     */
     if(0 == strncasecmp(client->conn_res.requ_method->str, "GET", 3)) { /* Check for real */
         /* Is it a real file ? */
         err_code = check_uri_str(uri_str, &uri_file_size);
-        //-err_code = check_uri(source, &uri_file_size);
         if (IS_NORMAL_FILE == err_code) {
             set_res_type(client);
             if((err_code = write_to_buf(client, ok_200_status, uri_file_size)) < 0)
@@ -221,6 +213,18 @@ MAKE_PAGE_STATUS make_response_page(conn_client * client)
             write_to_buf(client, clierr_404_status, 0);
         }
 
+    }
+    else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "HEAD", 4)) {err_code = check_uri_str(uri_str, &uri_file_size);
+        if (IS_NORMAL_FILE == err_code) {
+            set_res_type(client); /* Check what kind of Resource does peer Request */
+            if((err_code = write_to_buf(client, ok_200_status, -1)) < 0)
+                goto SERVER_ERROR;
+        }else if (FORBIDDEN_ENTRY == err_code){
+            write_to_buf(client, clierr_403_status, -1);
+        }
+        else /*if (NO_SUCH_FILE == err_code || IS_DIRECTORY == err_code)*/ {
+            write_to_buf(client, clierr_404_status, -1);
+        }
     }
     else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "POST", 4)) {
         /* TODO POST Method */
