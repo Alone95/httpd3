@@ -13,7 +13,6 @@
 #include "../util/wsx_string.h"
 typedef char boolean;
 struct connection {
-    int  epfd_grop;
     int  file_dsp;
 #define CONN_BUF_SIZE 1024
     int  read_offset;
@@ -31,9 +30,9 @@ struct connection {
         boolean set_ep_out  : 1;
         /* 2 ^ 4 -> 16 Types */
         int content_type    : 4;
-        /* GET, POST, HEAD*/
+        /* GET, POST, HEAD */
         string_t requ_method;
-        /* http/1.0\0 */
+        /* HTTP/1.0\0 */
         string_t requ_http_ver;
         /* / */
         string_t requ_res_path;

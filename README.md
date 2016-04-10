@@ -2,9 +2,8 @@
 
 ## Unstable
 
-### Version-1.4.1
+### Version-1.4.2
 
-- 高性能高并发
 - C语言开发
 - `epoll` + 类线程池技术
 - `Linux` 环境， 非跨平台
@@ -46,6 +45,7 @@
 ### TODO
 - `timer`模块
 - `util`模块
+	- 实现一个底层`SkipList`去存储和维护客户连接。
 - 能处理更多的属性
 - 添加缓存支持
 - **http** 请求头 : `POST`

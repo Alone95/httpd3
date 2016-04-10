@@ -3,7 +3,6 @@
 //
 
 #include "handle.h"
-#include "handle_core.h"
 #include <linux/tcp.h>
 #include <pthread.h>
 
@@ -17,7 +16,8 @@ char * website_root_path = NULL;
 static int * epfd_group = NULL;  /* Workers' epfd set */
 static int   epfd_group_size = 0; /* Workers' epfd set size */
 static int   workers = 0;         /* Number of Workers */
-static int * epfd_listen_set = NULL; /* Linstenners' epfd set */
+/* TODO
+ * Will be use in Multi-Process */
 static int   listeners = MAX_LISTEN_EPFD_SIZE; /* Number of Listenner */
 static conn_client * clients;   /* Client set */
 
@@ -66,7 +66,10 @@ static void prepare_workers(const wsx_config_t * config) {
 #endif
             exit(-1);
         }
-
+        /* TODO
+         * This Part will be replace with a Special Data Structure
+         * SkipList, which is aims to Store/Maintain the each 'conn_client's.
+         * */
         clients = Malloc(OPEN_FILE * sizeof(conn_client));
         if (NULL == clients) {
             exit(-1);
@@ -100,11 +103,8 @@ static inline void destroy_resouce() {
 }
 static void clear_clients(conn_client * clear) {
     clear->file_dsp = -1;
-    clear->epfd_grop = -1;
-    //clear->linger = 0;
     clear->conn_res.conn_linger = 0;
     clear->read_offset = 0;
-    //clear->write_offset = 0;
     clear->r_buf_offset = 0;
     clear->w_buf_offset = 0;
     clear->r_buf->use->clear(clear->r_buf);
@@ -133,7 +133,6 @@ static void * listen_thread(void * arg) {
 #endif
                 set_nonblock(sock);
                 clients[sock].file_dsp = sock;
-                clients[sock].epfd_grop = epfd_group[balance_index];
                 add_event(epfd_group[balance_index], sock, EPOLLIN);
                 balance_index = (balance_index+1) % workers;
             } else /* sock == -1 means nothing to accept */
