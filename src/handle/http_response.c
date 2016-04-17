@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <time.h>
-
+extern char * cache_file;
 extern char * website_root_path;
 /* HTTP Date */
 static const char * date_week[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
@@ -25,6 +25,10 @@ static const char * content_type[] = {
         "image/git", "image/jpeg",
         "image/png", "image/bmp",
 };
+enum {
+    CONN_CLOSE = 0, CONN_KEEP_ALIVE,
+};
+static const char * conn_status[] = { "close", "keep-alive" };
 /* HTTP Status Code */
 static const char * const
         ok_200_status[] = { "200",
@@ -121,6 +125,8 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     time_t      now;
     time(&now);
     utc = gmtime(&now);/* Same As before */
+
+    /* Construct the HTTP head */
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "%s %s %s\r\n",
                                                      client->conn_res.requ_http_ver->str,
                                                      status[STATUS_CODE], status[STATUS_TITLE]);
@@ -136,6 +142,8 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     write_buf[w_count] = '\0';
     w_buf->use->append(w_buf, APPEND(write_buf));
     client->w_buf_offset = w_count;
+
+    /* If Server do not wanna to sent local file */
     if (0 == rsource_size) {  /* GET Method */
         w_buf->use->append(w_buf, APPEND(status[STATUS_CONTENT]));
         snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, status[2]);
@@ -143,18 +151,28 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     } else if (-1 == rsource_size) { /* HEAD Method */
         return 0;
     }
-    int fd = open(resource->str, O_RDONLY);
-    if (fd < 0) {
-        return -1; /* Write again */
+    if (0 != wsx_rstrncmp(resource->str, "index.html", 10)) {
+        /* Open and map the file to memory */
+        int fd = open(resource->str, O_RDONLY);
+        if (fd < 0) {
+            return -1; /* Write again */
+        }
+        char *file_map = mmap(NULL, rsource_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (NULL == file_map) {
+            assert(file_map != NULL);
+        }
+        close(fd);
+
+        /* Construct the HTTP Content if needed */
+        w_buf->use->append(w_buf, file_map, rsource_size);
+        client->w_buf_offset += rsource_size;
+        munmap(file_map, rsource_size);
     }
-    char * file_map = mmap(NULL, rsource_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (NULL == file_map) {
-        assert(file_map != NULL);
+    else {
+        char *file_map = cache_file;
+        w_buf->use->append(w_buf, file_map, rsource_size);
+        client->w_buf_offset += rsource_size;
     }
-    close(fd);
-    w_buf->use->append(w_buf, file_map, rsource_size);
-    client->w_buf_offset += rsource_size;
-    munmap(file_map, rsource_size);
     return 0;
 #undef STATUS_CODE
 #undef STATUS_TITLE
@@ -185,6 +203,14 @@ static inline int set_res_type(conn_client * client) {
     client->conn_res.content_type = check_res_type(client->conn_res.requ_res_path);
     return 0;
 }
+
+/*
+ * Return 0 if it is safe, 1 for evil request path
+ * */
+static inline int check_evil_path(string_t uri) {
+    return NULL != uri->use->has(uri, "..") ? 1 : 0;
+}
+
 /*
  * Universal Response Page maker
  * */
@@ -194,50 +220,71 @@ MAKE_PAGE_STATUS make_response_page(conn_client * client)
     int uri_file_size = 0;
 
     string_t uri_str = client->conn_res.requ_res_path;
-    if (1 <= uri_str->use->length(uri_str)) { /* Make it valid */
+    /* Check Is it Empty? */
+    if (1 <= uri_str->use->length(uri_str)) {
+        /* Evil Request! */
+        err_code = check_evil_path(uri_str);
+        if (1 == err_code) {
+            err_code = write_to_buf(client, clierr_403_status, 0);
+            if (err_code < 0)
+                return MAKE_PAGE_FAIL;
+            return MAKE_PAGE_SUCCESS;
+        }
+        /* Make it valid */
         deal_uri_string(uri_str);
     } else {
         goto SERVER_ERROR;
     }
-    if(0 == strncasecmp(client->conn_res.requ_method->str, "GET", 3)) { /* Check for real */
-        /* Is it a real file ? */
+    if (METHOD_GET == client->conn_res.request_method) {
+    //if(0 == strncasecmp(client->conn_res.requ_method->str, "GET", 3)) { /* Check for real */
+        /* Is it a real file ? and get its file attribute */
         err_code = check_uri_str(uri_str, &uri_file_size);
         if (IS_NORMAL_FILE == err_code) {
             set_res_type(client);
             if((err_code = write_to_buf(client, ok_200_status, uri_file_size)) < 0)
                 goto SERVER_ERROR;
-        }else if (FORBIDDEN_ENTRY == err_code){
-            write_to_buf(client, clierr_403_status, 0);
+        }
+        else if (FORBIDDEN_ENTRY == err_code){
+            err_code = write_to_buf(client, clierr_403_status, 0);
+            if (err_code < 0)
+                return MAKE_PAGE_FAIL;
+            return MAKE_PAGE_SUCCESS;
         }
         else /*if (NO_SUCH_FILE == err_code || IS_DIRECTORY == err_code)*/ {
             write_to_buf(client, clierr_404_status, 0);
         }
-
     }
-    else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "HEAD", 4)) {err_code = check_uri_str(uri_str, &uri_file_size);
+    else if (METHOD_HEAD == client->conn_res.request_method) {
+//    else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "HEAD", 4)) {
+        err_code = check_uri_str(uri_str, &uri_file_size);
         if (IS_NORMAL_FILE == err_code) {
-            set_res_type(client); /* Check what kind of Resource does peer Request */
+            /* Check what kind of Resource does peer Request */
+            set_res_type(client);
             if((err_code = write_to_buf(client, ok_200_status, -1)) < 0)
                 goto SERVER_ERROR;
-        }else if (FORBIDDEN_ENTRY == err_code){
+        }
+        else if (FORBIDDEN_ENTRY == err_code){
             write_to_buf(client, clierr_403_status, -1);
         }
         else /*if (NO_SUCH_FILE == err_code || IS_DIRECTORY == err_code)*/ {
             write_to_buf(client, clierr_404_status, -1);
         }
     }
-    else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "POST", 4)) {
-        /* TODO POST Method */
+    else if (METHOD_POST == client->conn_res.request_method) {
+    //else if ( 0 == strncasecmp(client->conn_res.requ_method->str, "POST", 4)) {
+        /* TODO
+         * POST Method
+         * */
         write_to_buf(client, clierr_405_status, 0);
     }
     else { /* Unknown Method */
         write_to_buf(client, clierr_400_status, 0);
     }
-    //-Free(source);
     return MAKE_PAGE_SUCCESS;
 
 SERVER_ERROR:
-    write_to_buf(client, sererr_500_status, 0);
-    return MAKE_PAGE_FAIL;
-
+    err_code = write_to_buf(client, sererr_500_status, 0);
+    if (err_code < 0)
+        return MAKE_PAGE_FAIL;
+    return MAKE_PAGE_SUCCESS;
 }

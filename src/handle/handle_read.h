@@ -11,6 +11,7 @@ typedef enum {
     DEAL_LINE_REQU_FAIL    = -1,
     DEAL_HEAD_SUCCESS = -2,
     DEAL_HEAD_FAIL    = -3,
+    MESSAGE_INCOMPLETE = -4,
 }DEAL_LINE_STATUS;
 
 typedef enum {

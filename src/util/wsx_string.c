@@ -168,6 +168,22 @@ void dele_Strings(string_t deleter) {
     Free(deleter);
 }
 
+int wsx_rstrncmp(const char * str1, const char * str2, int nbytes) {
+    if (nbytes < 0)
+        return -1;
+    if (NULL == str1 || NULL == str2)
+        return -2;
+    int str1_byte = strlen(str1);
+    int str2_byte = strlen(str2);
+    if (str1_byte < nbytes || str2_byte < nbytes)
+        return -3;
+    for (int i = 0; i < nbytes; ++i) {
+        if (str1[--str1_byte] != str2[--str2_byte])
+            return 1;
+    }
+    return 0;
+}
+
 #if defined(WSX_DEBUG)
 static inline void Str_print(string_t self)
 {

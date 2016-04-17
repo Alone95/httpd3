@@ -7,6 +7,10 @@
 #include <pthread.h>
 
 #include <assert.h>
+#include <sys/mman.h>
+
+char * cache_file = NULL;
+
 enum SERVE_STATUS {
     CLOSE_SERVE = 1,
     RUNNING_SERVER= 0
@@ -49,6 +53,12 @@ static inline void mod_event(int epfd, int fd, int event_flag) {
  * Worker epfd set and client set
  * */
 static void prepare_workers(const wsx_config_t * config) {
+    char file[256] = {'\0'};
+    snprintf(file, 256, "%s%s", config->root_path, "index.html");
+    int fd = open(file, O_RDONLY);
+    assert(fd > 0);
+    cache_file = mmap(NULL, 51, PROT_READ, MAP_PRIVATE, fd, 0);
+    assert(cache_file != NULL);
     epfd_group_size = workers;
     /* Prepare for workers' set */
     epfd_group = Malloc(epfd_group_size * (sizeof(int)));
@@ -160,7 +170,17 @@ static void * workers_thread(void * arg) {
 #endif
             if (new_apply.events & EPOLLIN) { /* Reading Work */
                 int err_code = handle_read(new_client);
-                if (err_code != HANDLE_READ_SUCCESS) {
+                if (err_code == MESSAGE_INCOMPLETE) {
+                    /* Some Message may not arrive */
+#if defined(WSX_DEBUG)
+                    fprintf(stderr, "READ FROM NEW CLIENT But Do not complete\n");
+
+#endif
+                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                    continue;
+                }
+                else if (err_code != HANDLE_READ_SUCCESS) {
+                    /* Read Bad Things */
 #if defined(WSX_DEBUG)
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
 #endif
@@ -168,11 +188,38 @@ static void * workers_thread(void * arg) {
                     clear_clients(new_client);
                     continue;
                 }
+
+                /* Try to Send the Message immediately */
+                err_code = handle_write(new_client);
+                if (HANDLE_WRITE_AGAIN == err_code) {
+                    /* TCP Write Buffer is Full */
+                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                    continue;
+                }
+                else if (HANDLE_READ_FAILURE == err_code) {
+                    /* Peer Close */
+                    close(sock);
+                    clear_clients(new_client);
+                    continue;
+                }
+                else {
+                    /* Write Success */
+                    if(1 == new_client->conn_res.conn_linger)
+                        mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                    else{
+                        close(sock);
+                        clear_clients(new_client);
+                        continue;
+                    }
+                }
+#if 0
                 mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                continue;
+#endif
 #if defined(WSX_DEBUG)
                 fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->w_buf->str);
 #endif
-            }
+            } // Read Event
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
                 int err_code = handle_write(new_client);
                 if (HANDLE_WRITE_AGAIN == err_code) /* TCP's Write buffer is Busy */

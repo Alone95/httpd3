@@ -67,4 +67,9 @@ string_t make_Strings(const char * init_str);
 /* Destroy the String which make from make_Strings */
 void dele_Strings(string_t deleter);
 
+/* Extra String Function */
+/*
+ * Reverse Compare
+ * */
+int wsx_rstrncmp(const char * str1, const char * str2, int nbytes);
 #endif //HTTPD3_WSX_STRING_H_H

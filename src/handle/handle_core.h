@@ -11,10 +11,16 @@
 #include <assert.h>
 #include "../memop/manage.h"
 #include "../util/wsx_string.h"
+enum REQUST_METHOD{
+    METHOD_GET = 0,
+    METHOD_HEAD = 1,
+    METHOD_POST = 2,
+    METHOD_UNKNOWN = 3,
+};
 typedef char boolean;
 struct connection {
     int  file_dsp;
-#define CONN_BUF_SIZE 1024
+#define CONN_BUF_SIZE 512
     int  read_offset;
     char read_buf[CONN_BUF_SIZE];
     /*int  write_offset;*/
@@ -23,14 +29,17 @@ struct connection {
     string_t r_buf;
     int w_buf_offset;
     string_t w_buf;
-
     struct {
         /* Is it Keep-alive in Application Layer */
-        boolean conn_linger : 1;
-        boolean set_ep_out  : 1;
+        boolean conn_linger  : 1;
+        boolean set_ep_out   : 1;
+        boolean is_read_done : 1; /* Read from Peer Done? */
+        /* GET HEAD POST */
+        boolean request_method : 2;
         /* 2 ^ 4 -> 16 Types */
         int content_type    : 4;
         /* GET, POST, HEAD */
+        int content_length;
         string_t requ_method;
         /* HTTP/1.0\0 */
         string_t requ_http_ver;
