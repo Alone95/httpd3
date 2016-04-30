@@ -87,9 +87,9 @@ static void prepare_workers(const wsx_config_t * config) {
             for (int j = 0; j < OPEN_FILE; ++j) {
                 clients[j].r_buf = make_Strings("");
                 clients[j].w_buf = make_Strings("");
-                clients[j].conn_res.requ_method = make_Strings("");
+                //clients[j].conn_res.requ_method = make_Strings("");
                 clients[j].conn_res.requ_res_path = make_Strings("");
-                clients[j].conn_res.requ_http_ver = make_Strings("");
+                //clients[j].conn_res.requ_http_ver = make_Strings("");
             }
         }
 
@@ -119,8 +119,8 @@ static void clear_clients(conn_client * clear) {
     clear->w_buf_offset = 0;
     clear->r_buf->use->clear(clear->r_buf);
     clear->w_buf->use->clear(clear->w_buf);
-    clear->conn_res.requ_http_ver->use->clear(clear->conn_res.requ_http_ver);
-    clear->conn_res.requ_method->use->clear(clear->conn_res.requ_method);
+    //clear->conn_res.requ_http_ver->use->clear(clear->conn_res.requ_http_ver);
+    //clear->conn_res.requ_method->use->clear(clear->conn_res.requ_method);
     clear->conn_res.requ_res_path->use->clear(clear->conn_res.requ_res_path);
 }
 

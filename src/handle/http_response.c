@@ -25,10 +25,21 @@ static const char * content_type[] = {
         "image/git", "image/jpeg",
         "image/png", "image/bmp",
 };
+
+static const char * http_ver[] = {
+        "HTTP/0.9", /* HTTP_0_9 */
+        "HTTP/1.0", /* HTTP_1_0 */
+        "HTTP/1.1", /* HTTP_1_1 */
+        "HTTP/2.0", /* HTTP_2_0 */
+        "UNKNOWN",  /* HTTP_UNKNOWN */
+};
+
+/* Connection Status */
 enum {
     CONN_CLOSE = 0, CONN_KEEP_ALIVE,
 };
 static const char * conn_status[] = { "close", "keep-alive" };
+
 /* HTTP Status Code */
 static const char * const
         ok_200_status[] = { "200",
@@ -128,7 +139,7 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
 
     /* Construct the HTTP head */
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "%s %s %s\r\n",
-                                                     client->conn_res.requ_http_ver->str,
+                                                     http_ver[client->conn_res.request_http_v],
                                                      status[STATUS_CODE], status[STATUS_TITLE]);
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Date: %s, %02d %s %d %02d:%02d:%02d GMT\r\n",
                                                                    date_week[utc->tm_wday], utc->tm_mday,
