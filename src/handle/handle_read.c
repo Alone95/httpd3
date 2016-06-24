@@ -45,14 +45,13 @@ HANDLE_STATUS handle_read(conn_client * client) {
  * read_buf is aim to be a local buffer
  * client->r_buf is the real Storage of the data
  * */
+__thread char read_buf2[CONN_BUF_SIZE] = {0};
 static int read_n(conn_client * client) {
-    /* -
-    if (client->read_offset >= CONN_BUF_SIZE-1)
-        return READ_OVERFLOW;
-    */
+    //- char   read_buf2[CONN_BUF_SIZE] = {0};
+    int    read_offset2 = 0;
     int    fd        = client->file_dsp;
-    char * buf       = client->read_buf;
-    int    buf_index = client->read_offset;
+    char * buf       = &read_buf2[0];//client->read_buf;
+    int    buf_index = read_offset2;//client->read_offset;
     int read_number = 0;
     int less_capacity = 0;
     while (1) {
@@ -60,12 +59,14 @@ static int read_n(conn_client * client) {
         if (less_capacity <= 1) {/* Overflow Protection */
             buf[buf_index] = '\0'; /* Flush the buf to the r_buf String */
             client->r_buf->use->append(client->r_buf, APPEND(buf));
-            client->r_buf_offset += client->read_offset;
-            client->read_offset = buf_index = 0;
-            buf = client->read_buf;
+            client->r_buf_offset += read_offset2;//- client->read_offset;
+            read_offset2 = 0;
+            buf_index = 0;
+            //- client->read_offset = buf_index = 0;
+            //- buf = client->read_buf;
             less_capacity = CONN_BUF_SIZE - buf_index;
         }
-        read_number = read(fd, buf+buf_index, less_capacity);
+        read_number = (int)read(fd, buf+buf_index, less_capacity);
         if (0 == read_number) { /* We must close connection */
             return READ_FAIL;
         }
@@ -73,14 +74,15 @@ static int read_n(conn_client * client) {
             if (EAGAIN == errno || EWOULDBLOCK == errno) {
                 buf[buf_index] = '\0';
                 client->r_buf->use->append(client->r_buf, APPEND(buf));
-                client->r_buf_offset += client->read_offset;
+                client->r_buf_offset += read_offset2;//client->read_offset;
                 return READ_SUCCESS;
             }
             return READ_FAIL;
         }
         else { /* Continue to Read */
             buf_index += read_number;
-            client->read_offset = buf_index;
+            read_offset2 = buf_index;
+            //- client->read_offset = buf_index;
         }
     }
 }
@@ -96,7 +98,7 @@ typedef struct requ_line{
     char version[VERSION_SIZE];
 }requ_line;
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line);
-static DEAL_LINE_STATUS deal_requ(conn_client * client,  const requ_line * status);
+static DEAL_LINE_STATUS deal_requ(conn_client * client, requ_line * status);
 static DEAL_LINE_STATUS deal_head(conn_client * client);
 
 /*
@@ -108,7 +110,7 @@ static DEAL_LINE_STATUS deal_head(conn_client * client);
 PARSE_STATUS parse_reading(conn_client * client) {
     int err_code = 0;
     requ_line line_status = {0};
-    client->read_offset  = 0; /* Set the local buffer offset to 0, the end of buf is '\0' */
+    //- client->read_offset  = 0; /* Set the local buffer offset to 0, the end of buf is '\0' */
     client->r_buf_offset = 0; /* Set the real Storage offset to 0, the end of buf is '\0' */
 
     /* Get Request line */
@@ -136,7 +138,7 @@ PARSE_STATUS parse_reading(conn_client * client) {
 /*
  * deal_requ, get the request line
  * */
-static DEAL_LINE_STATUS deal_requ(conn_client * client, const requ_line * status) {
+static DEAL_LINE_STATUS deal_requ(conn_client * client, requ_line * status) {
 #define READ_HEAD_LINE 3+256+8+1
     char requ_line[READ_HEAD_LINE] = {'\0'};
     int err_code = get_line(client, requ_line, READ_HEAD_LINE);

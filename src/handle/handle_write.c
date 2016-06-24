@@ -10,9 +10,9 @@ HANDLE_STATUS handle_write(conn_client * client) {
     int nbyte = w_offset;
     int count = 0;
     int fd = client->file_dsp;
-    char * buf = client->write_buf;
+    //- char * buf = client->write_buf;
     while (nbyte > 0) {
-        buf += count;
+       //-  buf += count;
         w_buf += count;
         count = write(fd, w_buf, nbyte);
         if (count < 0) {
@@ -23,7 +23,6 @@ HANDLE_STATUS handle_write(conn_client * client) {
             }
             else /* if (EPIPE == errno) */
                 return HANDLE_WRITE_FAILURE;
-
         }
         else if (0 == count)
             return HANDLE_WRITE_FAILURE;

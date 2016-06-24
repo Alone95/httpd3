@@ -21,8 +21,8 @@ typedef enum mm_error MM_STATUS;
 #endif
 
 #if defined(WSX_MM_DEPENT)
-void* wsx_malloc(int sizes);
-void* wsx_calloc(int sizes);
+void* wsx_malloc(size_t sizes);
+void* wsx_calloc(size_t sizes);
 MM_STATUS wsx_free(void * pointer);
 #endif
 

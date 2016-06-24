@@ -30,13 +30,9 @@ typedef unsigned char boolean;
 struct connection {
     int  file_dsp;
 #define CONN_BUF_SIZE 512
-    int  read_offset;
-    char read_buf[CONN_BUF_SIZE];
-    /*int  write_offset;*/
-    char write_buf[CONN_BUF_SIZE];
     int r_buf_offset;
-    string_t r_buf;
     int w_buf_offset;
+    string_t r_buf;
     string_t w_buf;
     struct {
         /* Is it Keep-alive in Application Layer */
@@ -47,8 +43,6 @@ struct connection {
         boolean request_method : 2; /* GET HEAD POST */
         int content_type : 4;  /* 2 ^ 4 -> 16 Types */
         int content_length; /* For POST */
-        //string_t requ_method;
-        // string_t requ_http_ver;
         string_t requ_res_path; /* / */
     }conn_res;
 };

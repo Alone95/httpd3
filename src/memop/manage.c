@@ -6,7 +6,7 @@
 /*
  * error is preserving for future.
  * */
-void* wsx_malloc(int sizes) {
+void* wsx_malloc(size_t sizes) {
     int error;
     void * alloc = NULL;
     if(sizes < 0) {
@@ -21,7 +21,7 @@ void* wsx_malloc(int sizes) {
     return alloc;
 }
 
-void* wsx_calloc(int sizes) {
+void* wsx_calloc(size_t sizes) {
     int error;
     void * alloc = NULL;
     if(sizes < 0) {

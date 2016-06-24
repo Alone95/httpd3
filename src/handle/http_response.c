@@ -123,12 +123,13 @@ static URI_STATUS check_uri_str(string_t restrict uri_str, int * restrict file_s
  * return 0 if Success, Or the remaining Bytes that can not pull into the write buffer(Not Big Enough)
  *
  * */
+__thread char local_write_buf[CONN_BUF_SIZE] = {0};
 static int write_to_buf(conn_client * restrict client, // connection client message
-                         const char * const * restrict status,  int rsource_size) {
+                        const char * const * restrict status,  int rsource_size) {
 #define STATUS_CODE 0
 #define STATUS_TITLE 1
 #define STATUS_CONTENT 2
-    char *   write_buf = client->write_buf; /* Local write buffer */
+    char *   write_buf = &local_write_buf[0];//- client->write_buf; /* Local write buffer */
     string_t resource  = client->conn_res.requ_res_path; /* Resource that peer request */
     string_t w_buf     = client->w_buf;     /* Real data buffer */
     int w_count = 0;
@@ -139,15 +140,15 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
 
     /* Construct the HTTP head */
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "%s %s %s\r\n",
-                                                     http_ver[client->conn_res.request_http_v],
-                                                     status[STATUS_CODE], status[STATUS_TITLE]);
+                        http_ver[client->conn_res.request_http_v],
+                        status[STATUS_CODE], status[STATUS_TITLE]);
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Date: %s, %02d %s %d %02d:%02d:%02d GMT\r\n",
-                                                                   date_week[utc->tm_wday], utc->tm_mday,
-                                                                   date_month[utc->tm_mon], 1900+utc->tm_year,
-                                                                   utc->tm_hour, utc->tm_min, utc->tm_sec);
+                        date_week[utc->tm_wday], utc->tm_mday,
+                        date_month[utc->tm_mon], 1900+utc->tm_year,
+                        utc->tm_hour, utc->tm_min, utc->tm_sec);
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Content-Type: %s\r\n", content_type[client->conn_res.content_type]);
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Content-Length: %u\r\n", 0 == rsource_size
-                                                                                            ? strlen(status[2]):rsource_size);
+                                                                                            ? (unsigned int)strlen(status[2]):(unsigned int)rsource_size);
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Connection: close\r\n");
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "\r\n");
     write_buf[w_count] = '\0';
@@ -168,20 +169,20 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
         if (fd < 0) {
             return -1; /* Write again */
         }
-        char *file_map = mmap(NULL, rsource_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        char *file_map = mmap(NULL, (size_t)rsource_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if (NULL == file_map) {
             assert(file_map != NULL);
         }
         close(fd);
 
         /* Construct the HTTP Content if needed */
-        w_buf->use->append(w_buf, file_map, rsource_size);
+        w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
         client->w_buf_offset += rsource_size;
-        munmap(file_map, rsource_size);
+        munmap(file_map, (unsigned int)rsource_size);
     }
     else {
         char *file_map = cache_file;
-        w_buf->use->append(w_buf, file_map, rsource_size);
+        w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
         client->w_buf_offset += rsource_size;
     }
     return 0;

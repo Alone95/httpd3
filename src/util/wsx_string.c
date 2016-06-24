@@ -14,7 +14,7 @@ static inline boolen       Str_isempty_(String * self);
 static inline unsigned int Str_get_capacity_fun(String * self);
 static inline unsigned int Str_get_length_fun(String * self);
 static inline void         Str_make_clear(String * self);
-static char *       Str_make_append(String * self, const char * app_str, unsigned int str_len);
+static void         Str_make_append(String * self, const char * app_str, unsigned int str_len);
 static boolen       Str_make_copy(String * self, String * dst);
 static boolen       Str_make_move(String * self, String * dst);
 static void         Str_constructor(String * self, const char * init_str);
@@ -112,6 +112,7 @@ static boolen Str_make_move(String * self, String * dst) {
     if (NULL == self || NULL == dst) assert(0);
     memcpy(dst, self, sizeof(String)); /* Move the self to the dst */
     memset(self, 0, sizeof(String));   /* Clear the self For the safe */
+    return 0;
 }
 
 static inline char * Str_find_substr(String * restrict self, const char * restrict to_be_find)
@@ -121,7 +122,7 @@ static inline char * Str_find_substr(String * restrict self, const char * restri
     return strstr(self->str, to_be_find);
 }
 
-static char * Str_make_append(String * restrict self, const char * restrict app_str, unsigned int str_len)
+static void Str_make_append(String * restrict self, const char * restrict app_str, unsigned int str_len)
 {
     unsigned int capcity = self->cap;
     unsigned int len     = self->len;

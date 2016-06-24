@@ -5,6 +5,10 @@
 #include "handle.h"
 #include <linux/tcp.h>
 #include <pthread.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <sys/epoll.h>
 
 #include <assert.h>
 #include <sys/mman.h>
@@ -114,7 +118,7 @@ static inline void destroy_resouce() {
 static void clear_clients(conn_client * clear) {
     clear->file_dsp = -1;
     clear->conn_res.conn_linger = 0;
-    clear->read_offset = 0;
+    //- clear->read_offset = 0;
     clear->r_buf_offset = 0;
     clear->w_buf_offset = 0;
     clear->r_buf->use->clear(clear->r_buf);
@@ -244,6 +248,7 @@ static void * workers_thread(void * arg) {
             }
         } /* New Apply */
     } /* main while */
+    return (void*)0;
 }
 static void shutdowns(int arg) {
     terminal_server = CLOSE_SERVE;

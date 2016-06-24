@@ -31,7 +31,7 @@ typedef boolen       (*isempty_fun)(String *);
 typedef unsigned int (*get_capacity_fun)(String *);
 typedef unsigned int (*get_length_fun)(String *);
 /* self appendString appendStringLength */
-typedef char * (*make_append)(String *, const char *, unsigned int);
+typedef void   (*make_append)(String *, const char *, unsigned int);
 /* Copy self to dst */
 typedef boolen (*make_copy)(String * self, String * dst);
 /* Move self to dst */
