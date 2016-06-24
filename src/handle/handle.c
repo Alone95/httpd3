@@ -34,7 +34,7 @@ static conn_client * clients;   /* Client set */
 static inline void add_event(int epfd, int fd, int event_flag) {
     struct epoll_event event = {0};
     event.data.fd = fd;
-    event.events = event_flag | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+    event.events = event_flag | EPOLLET | EPOLLRDHUP;
     if (-1 == epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event)) {
         perror("epoll_ctl ADD: ");
         exit(-1);
@@ -46,7 +46,7 @@ static inline void add_event(int epfd, int fd, int event_flag) {
 static inline void mod_event(int epfd, int fd, int event_flag) {
     struct epoll_event event = {0};
     event.data.fd = fd;
-    event.events |= EPOLLONESHOT | event_flag;
+    event.events |=  event_flag;
     if (-1 == epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event)) {
         perror("epoll_ctl MOD: ");
         exit(-1);
@@ -180,7 +180,7 @@ static void * workers_thread(void * arg) {
                     fprintf(stderr, "READ FROM NEW CLIENT But Do not complete\n");
 
 #endif
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                    mod_event(deal_epfd, sock, EPOLLIN);
                     continue;
                 }
                 else if (err_code != HANDLE_READ_SUCCESS) {
@@ -197,10 +197,10 @@ static void * workers_thread(void * arg) {
                 err_code = handle_write(new_client);
                 if (HANDLE_WRITE_AGAIN == err_code) {
                     /* TCP Write Buffer is Full */
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                    mod_event(deal_epfd, sock, EPOLLOUT);
                     continue;
                 }
-                else if (HANDLE_READ_FAILURE == err_code) {
+                else if (HANDLE_WRITE_FAILURE == err_code) {
                     /* Peer Close */
                     close(sock);
                     clear_clients(new_client);
@@ -209,7 +209,7 @@ static void * workers_thread(void * arg) {
                 else {
                     /* Write Success */
                     if(1 == new_client->conn_res.conn_linger)
-                        mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                        mod_event(deal_epfd, sock, EPOLLIN);
                     else{
                         close(sock);
                         clear_clients(new_client);
@@ -227,7 +227,7 @@ static void * workers_thread(void * arg) {
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
                 int err_code = handle_write(new_client);
                 if (HANDLE_WRITE_AGAIN == err_code) /* TCP's Write buffer is Busy */
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                    mod_event(deal_epfd, sock, EPOLLOUT);
                 else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
                     close(sock);
                     clear_clients(new_client);
@@ -235,7 +235,7 @@ static void * workers_thread(void * arg) {
                 }
                 /* if Keep-alive */
                 if(1 == new_client->conn_res.conn_linger)
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                    mod_event(deal_epfd, sock, EPOLLIN);
                 else{
                     close(sock);
                     clear_clients(new_client);
