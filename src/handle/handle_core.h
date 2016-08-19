@@ -11,6 +11,13 @@
 #include <assert.h>
 #include "../memop/manage.h"
 #include "../util/wsx_string.h"
+
+#if defined(__GNUC__) && (__GNUC__ >= 3) || defined(__clang__) && (__clang_major__ >= 3)
+#define UNLIKELY(x) __builtin_expect((x), 0)
+#else
+#define UNLIKELY(x) (x)
+#endif
+
 enum REQUST_METHOD{
     METHOD_GET  = 0,
     METHOD_HEAD = 1,

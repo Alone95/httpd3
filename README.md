@@ -2,7 +2,7 @@
 
 ## Unstable
 
-### Version-1.6.0
+### Version-1.7.0
 
 - C语言开发
 - `epoll` + 类线程池技术
@@ -49,9 +49,7 @@
 > 不开启缓存的意思是，每次请求资源都 **open, mmap, close, unmmap**
 
 ### 进度
-- 完成总体程序框架的编写，基本功能完成
-- 使用新数据结构 `String` 解决发送文件过大问题。
-- 实现`GET HEAD`， 实现`keep-alive`长连接，但默认关闭。
+- 使用新数据结构 `String_s` 无法正确处理二进制文件的问题。
 
 ### TODO
 - `timer`模块

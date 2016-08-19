@@ -74,17 +74,23 @@ static const char * const
 static inline void deal_uri_string(string_t uri) {
 #if defined(WSX_DEBUG)
     fputs("\n[String]The resource is ",stderr);
-    uri->use->print(uri);
+    print_string(uri);
     fprintf(stderr, "Website_root_path: %s\n", website_root_path);
 #endif
-    if (2 == uri->use->length(uri) && NULL != uri->use->has(uri, "/")){
-        uri->use->clear(uri);
-        uri->use->append(uri, APPEND(website_root_path));
-        uri->use->append(uri, APPEND("index.html"));
+    if (1 == get_length(uri) && NULL != search_content(uri, "/", 1)){
+    //if (2 == uri->use->length(uri) && NULL != uri->use->has(uri, "/")){
+        clear_string(uri);
+        append_string(uri, STRING(website_root_path));
+        append_string(uri, "index.html", 10);
+        //uri->use->clear(uri);
+        //uri->use->append(uri, APPEND(website_root_path));
+        //uri->use->append(uri, APPEND("index.html"));
     } else {
         char tmp[1024] = {0};
         snprintf(tmp, 1024, "%s%s", website_root_path, uri->str+1);
-        uri->use->clear(uri);uri->use->append(uri, APPEND(tmp));
+        clear_string(uri);
+        append_string(uri, STRING(tmp));
+        //uri->use->clear(uri);uri->use->append(uri, APPEND(tmp));
     }
 #if defined(WSX_DEBUG)
     uri->use->print(uri);
@@ -152,18 +158,20 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Connection: close\r\n");
     w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "\r\n");
     write_buf[w_count] = '\0';
-    w_buf->use->append(w_buf, APPEND(write_buf));
+    append_string(w_buf, STRING(write_buf));
+    //w_buf->use->append(w_buf, APPEND(write_buf));
     client->w_buf_offset = w_count;
 
     /* If Server do not wanna to sent local file */
     if (0 == rsource_size) {  /* GET Method */
-        w_buf->use->append(w_buf, APPEND(status[STATUS_CONTENT]));
-        snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, status[2]);
+        append_string(w_buf, STRING(status[STATUS_CONTENT]));
+        //w_buf->use->append(w_buf, APPEND(status[STATUS_CONTENT]));
+        snprintf(write_buf+w_count, (size_t)(CONN_BUF_SIZE-w_count), status[2]);
         return 0;
     } else if (-1 == rsource_size) { /* HEAD Method */
         return 0;
     }
-    if (0 != wsx_rstrncmp(resource->str, "index.html", 10)) {
+    if (0 != rcmp_content(resource, "index.html", 10)) {
         /* Open and map the file to memory */
         int fd = open(resource->str, O_RDONLY);
         if (fd < 0) {
@@ -176,13 +184,15 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
         close(fd);
 
         /* Construct the HTTP Content if needed */
-        w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
+        append_string(w_buf, file_map, (uint32_t)rsource_size);
+        //w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
         client->w_buf_offset += rsource_size;
         munmap(file_map, (unsigned int)rsource_size);
     }
     else {
         char *file_map = cache_file;
-        w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
+        append_string(w_buf, file_map, (uint32_t)rsource_size);
+        //w_buf->use->append(w_buf, file_map, (unsigned int)rsource_size);
         client->w_buf_offset += rsource_size;
     }
     return 0;
@@ -192,7 +202,8 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
 }
 
 static CONTENT_TYPE check_res_type(string_t uri){
-    int length = uri->use->length(uri);
+    int length = get_length(uri);
+    //uri->use->length(uri);
     char * search = uri->str;
     char * type = NULL;
     for (int i = length - 1; i >= 0 && (search[i] != '/'); --i) {
@@ -220,7 +231,8 @@ static inline int set_res_type(conn_client * client) {
  * Return 0 if it is safe, 1 for evil request path
  * */
 static inline int check_evil_path(string_t uri) {
-    return NULL != uri->use->has(uri, "..") ? 1 : 0;
+    return (NULL != search_content(uri, "..", 2)) ? 1 : 0;
+    //return NULL != uri->use->has(uri, "..") ? 1 : 0;
 }
 
 /*
@@ -233,7 +245,8 @@ MAKE_PAGE_STATUS make_response_page(conn_client * client)
 
     string_t uri_str = client->conn_res.requ_res_path;
     /* Check Is it Empty? */
-    if (1 <= uri_str->use->length(uri_str)) {
+    if (1 <= get_length(uri_str)) {
+    //if (1 <= uri_str->use->length(uri_str)) {
         /* Evil Request! */
         err_code = check_evil_path(uri_str);
         if (1 == err_code) {

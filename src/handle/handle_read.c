@@ -4,7 +4,6 @@
 #include <string.h>
 #include <assert.h>
 #include "handle_read.h"
-#include "handle_core.h"
 
 
 typedef enum {
@@ -58,7 +57,8 @@ static int read_n(conn_client * client) {
         less_capacity = CONN_BUF_SIZE - buf_index;
         if (less_capacity <= 1) {/* Overflow Protection */
             buf[buf_index] = '\0'; /* Flush the buf to the r_buf String */
-            client->r_buf->use->append(client->r_buf, APPEND(buf));
+            append_string(client->r_buf, STRING(buf));
+            //client->r_buf->use->append(client->r_buf, APPEND(buf));
             client->r_buf_offset += read_offset2;//- client->read_offset;
             read_offset2 = 0;
             buf_index = 0;
@@ -73,7 +73,8 @@ static int read_n(conn_client * client) {
         else if (-1 == read_number) { /* Nothing to read */
             if (EAGAIN == errno || EWOULDBLOCK == errno) {
                 buf[buf_index] = '\0';
-                client->r_buf->use->append(client->r_buf, APPEND(buf));
+                append_string(client->r_buf, STRING(buf));
+                //client->r_buf->use->append(client->r_buf, APPEND(buf));
                 client->r_buf_offset += read_offset2;//client->read_offset;
                 return READ_SUCCESS;
             }
@@ -182,16 +183,18 @@ static DEAL_LINE_STATUS deal_requ(conn_client * client, requ_line * status) {
         client->conn_res.request_http_v = HTTP_UNKNOWN;
         return DEAL_LINE_REQU_FAIL;
     }
-    //(client->conn_res).requ_method->use->append((client->conn_res).requ_method, APPEND(status->method));
-    //(client->conn_res).requ_http_ver->use->append((client->conn_res).requ_http_ver, APPEND(status->version));
-    (client->conn_res).requ_res_path->use->append((client->conn_res).requ_res_path, APPEND(status->path));
+    append_string((client->conn_res).requ_res_path, STRING(status->path));
+    //(client->conn_res).requ_res_path->use->append((client->conn_res).requ_res_path, APPEND(status->path));
 #if defined(WSX_DEBUG)
     fprintf(stderr, "The Request method : %s, path : %s, version : %s\n",
                                     status->method, status->path, status->version);
     fprintf(stderr, "[String] The Request method : \n");
-    client->conn_res.requ_res_path->use->print(client->conn_res.requ_res_path);
-    client->conn_res.requ_http_ver->use->print(client->conn_res.requ_http_ver);
-    client->conn_res.requ_method->use->print(client->conn_res.requ_method);
+    print_string(client->conn_res.requ_res_path);
+    print_string(client->conn_res.requ_http_ver);
+    print_string(client->conn_res.requ_method);
+    //client->conn_res.requ_res_path->use->print(client->conn_res.requ_res_path);
+    //client->conn_res.requ_http_ver->use->print(client->conn_res.requ_http_ver);
+    //client->conn_res.requ_method->use->print(client->conn_res.requ_method);
 #endif
     return DEAL_LINE_REQU_SUCCESS;
 #undef READ_HEAD_LINE
@@ -262,7 +265,8 @@ static DEAL_LINE_STATUS deal_head(conn_client * client) {
  * */
 static int get_line(conn_client * restrict client, char * restrict line_buf, int max_line) {
     int nbytes = 0;
-    char *r_buf_find = (client->r_buf->use->has(client->r_buf,"\n"));
+    char *r_buf_find = search_content(client->r_buf, "\n", 1);
+    //(client->r_buf->use->has(client->r_buf,"\n"));
     if (NULL == r_buf_find){ 
         fprintf(stderr, "get_line has read a incomplete Message\n");
         return MESSAGE_INCOMPLETE;
