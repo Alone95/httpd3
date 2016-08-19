@@ -5,12 +5,8 @@
 #ifndef HTTPD3_HANDLE_H
 #define HTTPD3_HANDLE_H
 
-#include <netdb.h>
-#include <sys/socket.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <sys/epoll.h>
 #include <signal.h>
+#include <sys/socket.h>
 
 #include "handle_read.h"
 #include "handle_write.h"

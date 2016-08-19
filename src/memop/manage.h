@@ -6,6 +6,11 @@
 #define HTTPD3_MANAGE_H
 #include <malloc.h>
 #include <stdlib.h>
+#if defined(__GNUC__) && (__GNUC__ >= 3) || defined(__clang__) && (__clang_major__ >= 3)
+#define UNLIKELY(x) __builtin_expect((x), 0)
+#else
+#define UNLIKELY(x) (x)
+#endif
 enum mm_error {
     ALLOC_SUCCEED     = 0x00, /* Successful */
     MALLOC_ERR_SIZE   = 0x01, /* Invalid Size For Allocate */
@@ -21,8 +26,8 @@ typedef enum mm_error MM_STATUS;
 #endif
 
 #if defined(WSX_MM_DEPENT)
-void* wsx_malloc(int sizes);
-void* wsx_calloc(int sizes);
+void* wsx_malloc(size_t sizes);
+void* wsx_calloc(size_t sizes);
 MM_STATUS wsx_free(void * pointer);
 #endif
 

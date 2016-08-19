@@ -1,7 +1,7 @@
 ## 这是一个HTTP服务器
 
 
-### Version-1.4.2
+### Version-1.5.0
 
 - C语言开发
 - `epoll` + 类线程池技术
@@ -34,7 +34,7 @@
 ### 编译参数
 - `gcc -std=gnu99 -pthread -O3`
 - `-DWSX_BASE_DEBUG` 是两个基础输出，在`handle.c`中
-- `-DWSX_DEBUG_ALL` 是剩下的所有输出
+- `-DWSX_DEBUG` 是剩下的所有输出
 
 ### 测试
 - **单核双线程,8G内存**的虚拟机配置中(笔记本)
@@ -48,9 +48,7 @@
 > 不开启缓存的意思是，每次请求资源都 **open, mmap, close, unmmap**
 
 ### 进度
-- 完成总体程序框架的编写，基本功能完成
-- 使用新数据结构 `String` 解决发送文件过大问题。
-- 实现`GET HEAD`
+- 使用新数据结构 `String_s` 无法正确处理二进制文件的问题。
 
 ### TODO
 - `timer`模块

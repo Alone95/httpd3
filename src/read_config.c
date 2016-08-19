@@ -10,7 +10,7 @@ static const char * config_path_search[] = {CONFIG_FILE_PATH, "./wsx.conf", "/et
 
 int init_config(wsx_config_t * config){
     const char ** roll = config_path_search;
-    FILE * file;
+    FILE * file = NULL;
     for (int i = 0; roll[i] != NULL; ++i) {
         file = fopen(roll[i], "r");
         if (file != NULL)
@@ -44,7 +44,7 @@ int init_config(wsx_config_t * config){
 #endif
             }
             else if (0 == strncasecmp(buf, "root", 4)) {
-                sscanf(pos, "%s", &config->root_path);
+                sscanf(pos, "%s", config->root_path);
                 /* End up without "/", Add it */
                 if ((config->root_path)[strlen(config->root_path)-1] != '/') {
                     strncat(config->root_path, "/", 1);
@@ -54,13 +54,13 @@ int init_config(wsx_config_t * config){
 #endif
             }
             else if (0 == strncasecmp(buf, "port", 4)) {
-                sscanf(pos, "%s", &config->listen_port);
+                sscanf(pos, "%s", config->listen_port);
 #if defined(WSX_DEBUG)
                 fprintf(stderr, "listen port is %s\n", config->listen_port);
 #endif
             }
             else if (0 == strncasecmp(buf, "addr", 4)) {
-                sscanf(pos, "%s", &config->use_addr);
+                sscanf(pos, "%s", config->use_addr);
 #if defined(WSX_DEBUG)
                 fprintf(stderr, "Listen address is %s\n", config->use_addr);
 #endif

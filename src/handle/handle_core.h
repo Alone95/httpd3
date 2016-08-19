@@ -11,31 +11,46 @@
 #include <assert.h>
 #include "../memop/manage.h"
 #include "../util/wsx_string.h"
-typedef char boolean;
+
+#if defined(__GNUC__) && (__GNUC__ >= 3) || defined(__clang__) && (__clang_major__ >= 3)
+#define UNLIKELY(x) __builtin_expect((x), 0)
+#else
+#define UNLIKELY(x) (x)
+#endif
+
+enum REQUST_METHOD{
+    METHOD_GET  = 0,
+    METHOD_HEAD = 1,
+    METHOD_POST = 2,
+    METHOD_UNKNOWN = 3,
+};
+
+enum HTTP_VERSION {
+    HTTP_0_9 = 0,
+    HTTP_1_0 = 1,
+    HTTP_1_1 = 2,
+    HTTP_2_0 = 3,
+    HTTP_UNKNOWN = HTTP_0_9,
+};
+
+typedef unsigned char boolean;
 struct connection {
     int  file_dsp;
-#define CONN_BUF_SIZE 1024
-    int  read_offset;
-    char read_buf[CONN_BUF_SIZE];
-    /*int  write_offset;*/
-    char write_buf[CONN_BUF_SIZE];
+#define CONN_BUF_SIZE 512
     int r_buf_offset;
-    string_t r_buf;
     int w_buf_offset;
+    string_t r_buf;
     string_t w_buf;
-
     struct {
         /* Is it Keep-alive in Application Layer */
-        boolean conn_linger : 1;
-        boolean set_ep_out  : 1;
-        /* 2 ^ 4 -> 16 Types */
-        int content_type    : 4;
-        /* GET, POST, HEAD */
-        string_t requ_method;
-        /* HTTP/1.0\0 */
-        string_t requ_http_ver;
-        /* / */
-        string_t requ_res_path;
+        boolean conn_linger  : 1;
+        boolean set_ep_out   : 1;
+        boolean is_read_done : 1; /* Read from Peer Done? */
+        boolean request_http_v : 2; /* HTTP/1.1 1.0 0.9 2.0 */
+        boolean request_method : 2; /* GET HEAD POST */
+        int content_type : 4;  /* 2 ^ 4 -> 16 Types */
+        int content_length; /* For POST */
+        string_t requ_res_path; /* / */
     }conn_res;
 };
 typedef struct connection conn_client;

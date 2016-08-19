@@ -5,8 +5,13 @@
 #include "handle.h"
 #include <linux/tcp.h>
 #include <pthread.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <sys/epoll.h>
+#include <sys/mman.h>
+char * cache_file = NULL;
 
-#include <assert.h>
 enum SERVE_STATUS {
     CLOSE_SERVE = 1,
     RUNNING_SERVER= 0
@@ -26,7 +31,7 @@ static conn_client * clients;   /* Client set */
 static inline void add_event(int epfd, int fd, int event_flag) {
     struct epoll_event event = {0};
     event.data.fd = fd;
-    event.events = event_flag | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+    event.events = event_flag | EPOLLET | EPOLLRDHUP;
     if (-1 == epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event)) {
         perror("epoll_ctl ADD: ");
         exit(-1);
@@ -38,7 +43,7 @@ static inline void add_event(int epfd, int fd, int event_flag) {
 static inline void mod_event(int epfd, int fd, int event_flag) {
     struct epoll_event event = {0};
     event.data.fd = fd;
-    event.events |= EPOLLONESHOT | event_flag;
+    event.events |=  event_flag;
     if (-1 == epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event)) {
         perror("epoll_ctl MOD: ");
         exit(-1);
@@ -49,6 +54,12 @@ static inline void mod_event(int epfd, int fd, int event_flag) {
  * Worker epfd set and client set
  * */
 static void prepare_workers(const wsx_config_t * config) {
+    char file[256] = {'\0'};
+    snprintf(file, 256, "%s%s", config->root_path, "index.html");
+    int fd = open(file, O_RDONLY);
+    assert(fd > 0);
+    cache_file = mmap(NULL, 51, PROT_READ, MAP_PRIVATE, fd, 0);
+    assert(cache_file != NULL);
     epfd_group_size = workers;
     /* Prepare for workers' set */
     epfd_group = Malloc(epfd_group_size * (sizeof(int)));
@@ -75,11 +86,9 @@ static void prepare_workers(const wsx_config_t * config) {
             exit(-1);
         } else{
             for (int j = 0; j < OPEN_FILE; ++j) {
-                clients[j].r_buf = make_Strings("");
-                clients[j].w_buf = make_Strings("");
-                clients[j].conn_res.requ_method = make_Strings("");
-                clients[j].conn_res.requ_res_path = make_Strings("");
-                clients[j].conn_res.requ_http_ver = make_Strings("");
+                clients[j].r_buf = MAKE_STRING_S("");
+                clients[j].w_buf = MAKE_STRING_S("");
+                clients[j].conn_res.requ_res_path = MAKE_STRING_S("");
             }
         }
 
@@ -104,14 +113,15 @@ static inline void destroy_resouce() {
 static void clear_clients(conn_client * clear) {
     clear->file_dsp = -1;
     clear->conn_res.conn_linger = 0;
-    clear->read_offset = 0;
+    //- clear->read_offset = 0;
     clear->r_buf_offset = 0;
     clear->w_buf_offset = 0;
-    clear->r_buf->use->clear(clear->r_buf);
-    clear->w_buf->use->clear(clear->w_buf);
-    clear->conn_res.requ_http_ver->use->clear(clear->conn_res.requ_http_ver);
-    clear->conn_res.requ_method->use->clear(clear->conn_res.requ_method);
-    clear->conn_res.requ_res_path->use->clear(clear->conn_res.requ_res_path);
+    clear_string(clear->r_buf);
+    clear_string(clear->w_buf);
+    //clear->r_buf->use->clear(clear->r_buf);
+    //clear->w_buf->use->clear(clear->w_buf);
+    clear_string(clear->conn_res.requ_res_path);
+    //clear->conn_res.requ_res_path->use->clear(clear->conn_res.requ_res_path);
 }
 
 /* Listener's Thread
@@ -160,7 +170,17 @@ static void * workers_thread(void * arg) {
 #endif
             if (new_apply.events & EPOLLIN) { /* Reading Work */
                 int err_code = handle_read(new_client);
-                if (err_code != HANDLE_READ_SUCCESS) {
+                if (err_code == MESSAGE_INCOMPLETE) {
+                    /* Some Message may not arrive */
+#if defined(WSX_DEBUG)
+                    fprintf(stderr, "READ FROM NEW CLIENT But Do not complete\n");
+
+#endif
+                    mod_event(deal_epfd, sock, EPOLLIN);
+                    continue;
+                }
+                else if (err_code != HANDLE_READ_SUCCESS) {
+                    /* Read Bad Things */
 #if defined(WSX_DEBUG)
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
 #endif
@@ -168,15 +188,42 @@ static void * workers_thread(void * arg) {
                     clear_clients(new_client);
                     continue;
                 }
+
+                /* Try to Send the Message immediately */
+                err_code = handle_write(new_client);
+                if (HANDLE_WRITE_AGAIN == err_code) {
+                    /* TCP Write Buffer is Full */
+                    mod_event(deal_epfd, sock, EPOLLOUT);
+                    continue;
+                }
+                else if (HANDLE_WRITE_FAILURE == err_code) {
+                    /* Peer Close */
+                    close(sock);
+                    clear_clients(new_client);
+                    continue;
+                }
+                else {
+                    /* Write Success */
+                    if(1 == new_client->conn_res.conn_linger)
+                        mod_event(deal_epfd, sock, EPOLLIN);
+                    else{
+                        close(sock);
+                        clear_clients(new_client);
+                        continue;
+                    }
+                }
+#if 0
                 mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                continue;
+#endif
 #if defined(WSX_DEBUG)
                 fprintf(stderr, "Client(%d)Read For Writing!!: \n\n%s",new_client->file_dsp, new_client->w_buf->str);
 #endif
-            }
+            } // Read Event
             else if (new_apply.events & EPOLLOUT) { /* Writing Work */
                 int err_code = handle_write(new_client);
                 if (HANDLE_WRITE_AGAIN == err_code) /* TCP's Write buffer is Busy */
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLOUT);
+                    mod_event(deal_epfd, sock, EPOLLOUT);
                 else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
                     close(sock);
                     clear_clients(new_client);
@@ -184,7 +231,7 @@ static void * workers_thread(void * arg) {
                 }
                 /* if Keep-alive */
                 if(1 == new_client->conn_res.conn_linger)
-                    mod_event(deal_epfd, sock, EPOLLONESHOT | EPOLLIN);
+                    mod_event(deal_epfd, sock, EPOLLIN);
                 else{
                     close(sock);
                     clear_clients(new_client);
@@ -197,6 +244,7 @@ static void * workers_thread(void * arg) {
             }
         } /* New Apply */
     } /* main while */
+    return (void*)0;
 }
 static void shutdowns(int arg) {
     terminal_server = CLOSE_SERVE;
