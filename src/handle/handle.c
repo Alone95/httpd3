@@ -186,7 +186,6 @@ static void * workers_thread(void * arg) {
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
 #endif
                     close(sock);
-                    //clear_clients(new_client);
                     continue;
                 }
 
@@ -200,7 +199,6 @@ static void * workers_thread(void * arg) {
                 else if (HANDLE_WRITE_FAILURE == err_code) {
                     /* Peer Close */
                     close(sock);
-                    //clear_clients(new_client);
                     continue;
                 }
                 else {
@@ -209,7 +207,6 @@ static void * workers_thread(void * arg) {
                         mod_event(deal_epfd, sock, EPOLLIN);
                     else{
                         close(sock);
-                        //clear_clients(new_client);
                         continue;
                     }
                 }
@@ -227,7 +224,6 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLOUT);
                 else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
                     close(sock);
-                    //clear_clients(new_client);
                     continue;
                 }
                 /* if Keep-alive */
@@ -235,13 +231,11 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLIN);
                 else{
                     close(sock);
-                    //clear_clients(new_client);
                     continue;
                 }
             }
             else { /* EPOLLRDHUG EPOLLERR EPOLLHUG */
                 close(sock);
-                //clear_clients(new_client);
             }
         } /* New Apply */
     } /* main while */
