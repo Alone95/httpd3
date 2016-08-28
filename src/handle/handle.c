@@ -142,6 +142,7 @@ static void * listen_thread(void * arg) {
                 fprintf(stderr, "There has a client(%d) Connected\n", sock);
 #endif
                 set_nonblock(sock);
+                clear_clients(&clients[sock]);
                 clients[sock].file_dsp = sock;
                 add_event(epfd_group[balance_index], sock, EPOLLIN);
                 balance_index = (balance_index+1) % workers;
@@ -185,7 +186,7 @@ static void * workers_thread(void * arg) {
                     fprintf(stderr, "READ FROM NEW CLIENT FAIL\n");
 #endif
                     close(sock);
-                    clear_clients(new_client);
+                    //clear_clients(new_client);
                     continue;
                 }
 
@@ -199,7 +200,7 @@ static void * workers_thread(void * arg) {
                 else if (HANDLE_WRITE_FAILURE == err_code) {
                     /* Peer Close */
                     close(sock);
-                    clear_clients(new_client);
+                    //clear_clients(new_client);
                     continue;
                 }
                 else {
@@ -208,7 +209,7 @@ static void * workers_thread(void * arg) {
                         mod_event(deal_epfd, sock, EPOLLIN);
                     else{
                         close(sock);
-                        clear_clients(new_client);
+                        //clear_clients(new_client);
                         continue;
                     }
                 }
@@ -226,7 +227,7 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLOUT);
                 else if (HANDLE_READ_FAILURE == err_code){ /* Peer Close */
                     close(sock);
-                    clear_clients(new_client);
+                    //clear_clients(new_client);
                     continue;
                 }
                 /* if Keep-alive */
@@ -234,13 +235,13 @@ static void * workers_thread(void * arg) {
                     mod_event(deal_epfd, sock, EPOLLIN);
                 else{
                     close(sock);
-                    clear_clients(new_client);
+                    //clear_clients(new_client);
                     continue;
                 }
             }
             else { /* EPOLLRDHUG EPOLLERR EPOLLHUG */
                 close(sock);
-                clear_clients(new_client);
+                //clear_clients(new_client);
             }
         } /* New Apply */
     } /* main while */

@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-
 #define WSX_STR_CAP_DEFAULT 32
 static boolen expand_size(String_s * self) {
     uint32_t capacity = self->cap;
@@ -125,13 +124,13 @@ char * search_content(String_s * itself, const char * search, uint32_t length) {
     return strstr(itself->str, search);
 }
 
-static int wsx_rstrncmp(const char * str1, const char * str2, int nbytes) {
+static int wsx_rstrncmp(const char * str1, const char * str2, int32_t nbytes) {
     if (nbytes < 0)
         return -1;
     if (NULL == str1 || NULL == str2)
         return -2;
-    int str1_byte = strlen(str1);
-    int str2_byte = strlen(str2);
+    size_t str1_byte = strlen(str1);
+    size_t str2_byte = strlen(str2);
     if (str1_byte < nbytes || str2_byte < nbytes)
         return -3;
     for (int i = 0; i < nbytes; ++i) {
