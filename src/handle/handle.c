@@ -128,14 +128,15 @@ static void clear_clients(conn_client * clear) {
  * @param arg will be a epoll instance
  * */
 static void * listen_thread(void * arg) {
-    int listen_epfd = (int)arg;
+    int listen_epfd = *(int *)arg;
     struct epoll_event new_client = {0};
     /* Adding new Client Sock to the Workers' thread */
     int balance_index = 0;
     while (terminal_server != CLOSE_SERVE) {
         int is_work = epoll_wait(listen_epfd, &new_client, 1, 2000);
         int sock = 0;
-        while (is_work > 0) { /* New Connect */
+        /* New Connect */
+        while (is_work > 0) {
             sock = accept(new_client.data.fd, NULL, NULL);
             if (sock > 0) {
 #if defined(WSX_BASE_DEBUG)
@@ -159,7 +160,7 @@ static void * listen_thread(void * arg) {
  * @param arg will be a epoll instance
  * */
 static void * workers_thread(void * arg) {
-    int deal_epfd = (int)arg;
+    int deal_epfd = *(int *)arg;
     struct epoll_event new_apply = {0};
     while(terminal_server != CLOSE_SERVE) {
         int is_apply = epoll_wait(deal_epfd, &new_apply, 1, 2000);
@@ -266,11 +267,11 @@ void handle_loop(int file_dsption, int sock_type, const wsx_config_t * config) {
     pthread_t listener_set[listeners];
     pthread_t worker_set[workers];
     for (int i = 0; i < listeners; ++i) {
-        pthread_create(&listener_set[i], NULL, listen_thread, (void*)listen_epfd);
+        pthread_create(&listener_set[i], NULL, listen_thread, (void *)&listen_epfd);
         //pthread_detach(listener_set[i]);
     }
     for (int j = 0; j < workers; ++j) {
-        pthread_create(&worker_set[j], NULL, workers_thread, (void*)(epfd_group[j]));
+        pthread_create(&worker_set[j], NULL, workers_thread, (void *)&(epfd_group[j]));
         pthread_detach(worker_set[j]);
     }
     for (int k = 0; k < listeners; ++k) {

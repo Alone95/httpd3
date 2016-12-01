@@ -38,7 +38,10 @@ static const char * http_ver[] = {
 enum {
     CONN_CLOSE = 0, CONN_KEEP_ALIVE,
 };
-static const char * conn_status[] = { "close", "keep-alive" };
+/*
+ * TODO implement
+ * */
+__attribute__ ((unused)) static const char * conn_status[] = { "close", "keep-alive" };
 
 /* HTTP Status Code */
 static const char * const
@@ -120,7 +123,7 @@ static URI_STATUS check_uri_str(string_t restrict uri_str, int * restrict file_s
     if (S_ISDIR(buf.st_mode)) {
         return IS_DIRECTORY; /* Is Directiry */
     }
-    *file_size = buf.st_size;
+    *file_size = (int)(buf.st_size);
     return IS_NORMAL_FILE;
 }
 
@@ -145,18 +148,18 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     utc = gmtime(&now);/* Same As before */
 
     /* Construct the HTTP head */
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "%s %s %s\r\n",
+    w_count += snprintf(write_buf+w_count, (size_t)(CONN_BUF_SIZE-w_count), "%s %s %s\r\n",
                         http_ver[client->conn_res.request_http_v],
                         status[STATUS_CODE], status[STATUS_TITLE]);
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Date: %s, %02d %s %d %02d:%02d:%02d GMT\r\n",
+    w_count += snprintf(write_buf+w_count, (size_t)CONN_BUF_SIZE-w_count, "Date: %s, %02d %s %d %02d:%02d:%02d GMT\r\n",
                         date_week[utc->tm_wday], utc->tm_mday,
                         date_month[utc->tm_mon], 1900+utc->tm_year,
                         utc->tm_hour, utc->tm_min, utc->tm_sec);
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Content-Type: %s\r\n", content_type[client->conn_res.content_type]);
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Content-Length: %u\r\n", 0 == rsource_size
+    w_count += snprintf(write_buf+w_count, (size_t)CONN_BUF_SIZE-w_count, "Content-Type: %s\r\n", content_type[client->conn_res.content_type]);
+    w_count += snprintf(write_buf+w_count, (size_t)CONN_BUF_SIZE-w_count, "Content-Length: %u\r\n", 0 == rsource_size
                                                                                             ? (unsigned int)strlen(status[2]):(unsigned int)rsource_size);
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "Connection: close\r\n");
-    w_count += snprintf(write_buf+w_count, CONN_BUF_SIZE-w_count, "\r\n");
+    w_count += snprintf(write_buf+w_count, (size_t)CONN_BUF_SIZE-w_count, "Connection: close\r\n");
+    w_count += snprintf(write_buf+w_count, (size_t)CONN_BUF_SIZE-w_count, "\r\n");
     write_buf[w_count] = '\0';
     append_string(w_buf, STRING(write_buf));
     //w_buf->use->append(w_buf, APPEND(write_buf));
@@ -166,7 +169,7 @@ static int write_to_buf(conn_client * restrict client, // connection client mess
     if (0 == rsource_size) {  /* GET Method */
         append_string(w_buf, STRING(status[STATUS_CONTENT]));
         //w_buf->use->append(w_buf, APPEND(status[STATUS_CONTENT]));
-        snprintf(write_buf+w_count, (size_t)(CONN_BUF_SIZE-w_count), status[2]);
+        //snprintf(write_buf+w_count, (size_t)(CONN_BUF_SIZE-w_count), status[2]);
         return 0;
     } else if (-1 == rsource_size) { /* HEAD Method */
         return 0;

@@ -38,7 +38,7 @@ typedef struct string_s String_s;
 typedef String_s * string_t;
 
 #define MAKE_STRING_S(c_str) make_string(c_str, strlen(c_str))
-#define STRING(c_str) c_str, strlen(c_str)
+#define STRING(c_str) c_str, (uint32_t)strlen(c_str)
 #define CHAR_OF(string_s, index) (index)>=(string_s)->length?assert(("string index out of range",0)),1:((string_s)->str)[index]
 
 /*
