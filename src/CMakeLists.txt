@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.3)
 project(httpd3)
 
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu99 -Wall -O2 -pthread")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Werror -O2 -pthread")
 set(SOURCE_FILES
         read_config.h read_config.c main.c
         handle/handle_core.h

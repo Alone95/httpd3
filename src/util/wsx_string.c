@@ -91,8 +91,9 @@ boolen compare_string_string(String_s * first, String_s * second) {
 }
 
 boolen compare_string_char(String_s * itself, const char * content, uint32_t length) {
-    if ( UNLIKELY(length > itself->length) )
-        assert(("length of compared string_s is shorter than content",0));
+    if ( UNLIKELY(length > itself->length) ) {
+        return 0;
+    }
     return !(boolen)memcmp(itself->str, content, length);
 }
 
@@ -119,8 +120,9 @@ uint32_t append_string(String_s * itself, const char * content, uint32_t length)
 }
 
 char * search_content(String_s * itself, const char * search, uint32_t length) {
-    if (UNLIKELY(strlen(search) != length))
-        assert(("search length is not match ",0));
+    if (UNLIKELY(strlen(search) != length)) {
+        return NULL;
+    }
     return strstr(itself->str, search);
 }
 
